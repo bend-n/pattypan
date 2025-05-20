@@ -75,8 +75,9 @@ impl Terminal {
                     x.params
                         .iter()
                         .map(|x| match x {
-                            ctlfun::Parameter::Default => 0,
-                            ctlfun::Parameter::Value(x) => *x,
+                            ctlfun::Parameter::Default =>
+                                "default".to_string(),
+                            ctlfun::Parameter::Value(x) => x.to_string(),
                         })
                         .collect::<Vec<_>>(),
                     String::from_utf8_lossy(&x.bytes),

@@ -55,13 +55,11 @@ fn write(fd: BorrowedFd, x: &[u8]) -> Result<()> {
     Ok(())
 }
 
-struct KeyPress(mpsc::Sender<Key>);
+struct KeyPress(mpsc::Sender<(Key, bool)>);
 impl InputCallback for KeyPress {
     fn add_char(&mut self, _: u32) {}
     fn set_key_state(&mut self, key: Key, state: bool) {
-        if state {
-            self.0.send(key).unwrap();
-        }
+        self.0.send((key, state)).unwrap();
     }
 }
 enum Event {
@@ -82,7 +80,7 @@ fn main() -> Result<()> {
     )?;
 
     // input
-    let (ktx, krx) = mpsc::channel::<Key>();
+    let (ktx, krx) = mpsc::channel();
 
     w.set_input_callback(Box::new(KeyPress(ktx)));
     w.update();
@@ -92,24 +90,37 @@ fn main() -> Result<()> {
 
     std::thread::spawn(move || {
         use Key::*;
-        while let Ok(k) = krx.recv() {
-            let x = match k {
-                Enter => b"\n",
-                Space => b" ",
-                Period => b".",
-                Slash => b"/",
-                Backslash => b"\\",
-                Backspace => b"",
-                LeftBracket => b"[",
-                RightBracket => b"]",
-                Comma => b",",
+        let mut shifting = false;
+        while let Ok((k, s)) = krx.recv() {
+            if s == true {
+                if k == LeftShift || k == RightShift {
+                    shifting = true;
+                    continue;
+                }
+                let x = match k {
+                    Enter => b"\n",
+                    Space => b" ",
+                    Period => b".",
+                    Slash => b"/",
+                    Backslash => b"\\",
+                    Backspace => b"",
+                    LeftBracket => b"[",
+                    RightBracket => b"]",
+                    Semicolon if shifting => b":",
+                    Semicolon => b";",
+                    Comma => b",",
 
-                Key0 | Key1 | Key2 | Key3 | Key4 | Key5 | Key6 | Key7
-                | Key8 | Key9 => &[k as u8 + b'0'],
+                    Key0 | Key1 | Key2 | Key3 | Key4 | Key5 | Key6
+                    | Key7 | Key8 | Key9 => &[k as u8 + b'0'],
 
-                _ => &[k as u8 - 10 + b'a'],
-            };
-            write(pty1.as_fd(), x).unwrap();
+                    _ => &[k as u8 - 10 + b'a'],
+                };
+                write(pty1.as_fd(), x).unwrap();
+            } else {
+                if k == LeftShift || k == RightShift {
+                    shifting = false;
+                }
+            }
         }
     });
 
