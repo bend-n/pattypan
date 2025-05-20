@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 anstream = "0.6.18"
 anyhow = "1.0.98"
+atools = "0.1.6"
 ctlfun = { git = "https://github.com/bend-n/ctlfun" }
 fimg = "0.4.44"
 implicit-fn = "0.1.0"

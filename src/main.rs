@@ -1,4 +1,4 @@
-#![feature(deadline_api)]
+#![feature(deadline_api, deref_patterns)]
 use std::fs::File;
 use std::io::Write;
 use std::iter::successors;
@@ -87,14 +87,26 @@ fn main() -> Result<()> {
     w.set_input_callback(Box::new(KeyPress(ktx)));
     w.update();
 
-    let pty = spawn("fish")?;
+    let pty = spawn("bash")?;
     let pty1 = pty.try_clone()?;
 
     std::thread::spawn(move || {
+        use Key::*;
         while let Ok(k) = krx.recv() {
             let x = match k {
-                Key::Enter => b"\n",
-                Key::Space => b" ",
+                Enter => b"\n",
+                Space => b" ",
+                Period => b".",
+                Slash => b"/",
+                Backslash => b"\\",
+                Backspace => b"",
+                LeftBracket => b"[",
+                RightBracket => b"]",
+                Comma => b",",
+
+                Key0 | Key1 | Key2 | Key3 | Key4 | Key5 | Key6 | Key7
+                | Key8 | Key9 => &[k as u8 + b'0'],
+
                 _ => &[k as u8 - 10 + b'a'],
             };
             write(pty1.as_fd(), x).unwrap();

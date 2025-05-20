@@ -1,3 +1,4 @@
+use ctlfun::Parameter::*;
 use ctlfun::TerminalInput::*;
 use ctlfun::{ControlFunction, TerminalInputParser};
 
@@ -34,10 +35,31 @@ impl Terminal {
         match self.p.parse_byte(x) {
             Continue => {}
             Char(x) => {
+                dbg!(x);
                 self.cursor.0 += 1;
                 self.cells[(self.cursor.1 * self.size.0 + self.cursor.0)
                     as usize]
                     .letter = Some(x);
+            }
+            Control(ControlFunction { start: 8, .. }) => {
+                self.cursor.0 -= 1;
+            }
+            Control(ControlFunction {
+                start: b'[',
+                params,
+                end: b'K',
+                ..
+            }) if params == &[Default] => {
+                for cell in &mut self.cells[(self.cursor.1 * self.size.0
+                    + self.cursor.0
+                    + 1)
+                    as usize
+                    ..(self.cursor.1 * self.size.0 + self.size.0) as usize]
+                // [self.cursor.1 as usize..self.size.0 as usize]
+                // [self.cursor.0 as usize..]
+                {
+                    cell.letter = None;
+                }
             }
             Control(ControlFunction { start: b'\r', .. }) => {
                 self.cursor.0 = 1;
@@ -46,6 +68,7 @@ impl Terminal {
                 self.cursor.1 += 1;
             }
             Control(x) => {
+                dbg!(x);
                 println!(
                     "{} {:?} {} {}",
                     x.start as char,

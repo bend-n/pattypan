@@ -1,3 +1,1 @@
-Welcome to fish, the friendly interactive shell
-Type [32mhelp(B[m for instructions on how to use fish
-]7;file://klunk/home/os/pattypan]0;~/pattypan[30m(B[m]133;A;special_key=1[0J[38;2;51;57;91m[0m[48;2;51;57;91m[38;2;239;238;244mos@klunk [0m[48;2;51;57;91m[38;2;255;151;46m[0m[48;2;255;151;46m[38;2;239;238;244m  pattypan [0m[48;2;39;123;72m[38;2;255;151;46m[0m[48;2;39;123;72m[38;2;239;238;244m  hmm  ?! [0m[48;2;124;10;22m[38;2;39;123;72m[0m[48;2;124;10;22m[38;2;239;238;244m 󰔟0ms [0m[48;2;53;157;221m[38;2;124;10;22m[0m[48;2;53;157;221m[38;2;239;238;244m  [0m[38;2;53;157;221m[0m]0; fish in  pattypan [K[49C[?2004h[>4;1m[=5u=
+]0;os@klunk:~/pattypan[?2004h[os@klunk pattypan]$ ab[K[K�
