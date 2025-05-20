@@ -1,4 +1,5 @@
 #![feature(deadline_api)]
+use std::fs::File;
 use std::io::Write;
 use std::iter::successors;
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
@@ -8,9 +9,14 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use anyhow::Result;
+use ctlfun::TerminalInputParser;
+use fimg::Image;
 use minifb::{InputCallback, Key, WindowOptions};
 use nix::pty::{ForkptyResult, forkpty};
-
+use render::FONT;
+use term::*;
+mod render;
+mod term;
 fn spawn(shell: &str) -> Result<OwnedFd> {
     let x = unsafe { forkpty(None, None)? };
     match x {
@@ -54,7 +60,7 @@ impl InputCallback for KeyPress {
     fn add_char(&mut self, _: u32) {}
     fn set_key_state(&mut self, key: Key, state: bool) {
         if state {
-            self.0.send((key)).unwrap();
+            self.0.send(key).unwrap();
         }
     }
 }
@@ -111,32 +117,59 @@ fn main() -> Result<()> {
         }
     });
 
-    // let x = b"echo -e \"\x1b(0lqqqk\nx   \x1b(Bx\nmqqqj";
-    // let x = String::from_utf8_lossy(&x);
-    // println!("{}", x);
-    let mut s = anstream::StripStream::new(std::io::stdout());
+    sleep(Duration::from_millis(100));
+    w.update();
+    let ppem = 18.0;
+    let (fw, fh) = render::dims(&FONT, ppem);
+    let cols = (w.get_size().0 as f32 / fw).floor() as u16;
+    let rows = (w.get_size().1 as f32 / fh).floor() as u16;
+    dbg!(rows, cols);
+    let mut t = Terminal {
+        cursor: (1, 1),
+        size: (cols, rows),
+        scrollback: Scrollback::default(),
+        cells: vec![
+            Cell {
+                bg: [0; 3],
+                color: [0; 3],
+                style: 0,
+                letter: None,
+            };
+            cols as usize * rows as usize
+        ],
+        p: Default::default(),
+        mode: Mode::Normal,
+    };
+    let mut f = File::create("x").unwrap();
     loop {
-        while let Ok(x) = trx.recv_timeout(Duration::from_millis(50)) {
-            s.write_all(&x)?;
+        while let Ok(x) = trx.recv_timeout(Duration::from_millis(16)) {
+            f.write_all(&x)?;
+            for char in x {
+                t.rx(char);
+            }
         }
-        s.flush()?;
-        w.update();
-        sleep(Duration::from_millis(10))
+        let i = render::render(&t, w.get_size(), ppem);
+        let x = Image::<Box<[u32]>, 1>::from(i.as_ref());
+        w.update_with_buffer(x.buffer(), w.get_size().0, w.get_size().1)?;
     }
 
-    // println!("-------------------");
-    // let mut t = TerminalInputParser::new();
-    // for char in x {
-    //     use ctlfun::TerminalInput::*;
-    //     match t.parse_byte(char) {
-    //         Continue => {
-    //             print!("-");
-    //         }
-    //         Char(x) => print!("{x}"),
-    //         Control(control_function) => println!("{:?}", control_function),
-    //         _ => panic!(),
-    //     }
-    // }
-
     Ok(())
+}
+#[test]
+
+fn tparse() {
+    println!("-------------------");
+    let mut x = TerminalInputParser::new();
+    for c in "\x1b[32m greninator \x1b[0m".as_bytes() {
+        use ctlfun::TerminalInput::*;
+        match x.parse_byte(*c) {
+            Char(x) => {
+                print!("{x}");
+            }
+
+            Control(x) => println!("{x:?}"),
+            _ => (),
+        }
+    }
+    panic!();
 }
