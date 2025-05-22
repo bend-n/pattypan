@@ -37,6 +37,11 @@ impl Terminal {
             Char(x) => {
                 dbg!(x);
                 self.cursor.0 += 1;
+                if self.cursor.0 == self.size.0 {
+                    println!("overflow");
+                    self.cursor.0 = 1;
+                    self.cursor.1 += 1;
+                }
                 self.cells[(self.cursor.1 * self.size.0 + self.cursor.0)
                     as usize]
                     .letter = Some(x);

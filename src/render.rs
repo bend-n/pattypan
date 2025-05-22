@@ -13,7 +13,7 @@ pub fn render(
     let m = FONT.metrics(&[]);
     let sz = ppem * (m.max_width / m.units_per_em as f32);
     let mut i = Image::alloc(w as _, h as _);
-    for (col, k) in x.cells.chunks_exact(x.size.0 as _).zip(0..) {
+    for (col, k) in x.cells.chunks_exact(x.size.0 as _).zip(0..).skip(1) {
         for (cell, j) in
             col.iter().skip(2).zip(0..).filter(_.0.letter.is_some())
         {
@@ -42,9 +42,9 @@ pub fn render(
                         .buf(&*x.data),
                     )
                     .as_ref(),
-                    4 + ((j * sz as i32) + x.placement.left) as u32,
-                    (k as f32 * (ppem * 1.25)) as u32
-                        - x.placement.top as u32,
+                    4 + ((j as f32 * sz) + x.placement.left as f32) as u32,
+                    ((k as f32 * (ppem * 1.25)) as u32)
+                        .saturating_sub(x.placement.top as u32),
                     // x.placement.height - x.placement.top as u32,
                 );
             }
@@ -55,7 +55,7 @@ pub fn render(
 
 pub fn dims(font: &FontRef, ppem: f32) -> (f32, f32) {
     let m = font.metrics(&[]);
-    (ppem * (m.max_width / m.units_per_em as f32), ppem)
+    (ppem * (m.max_width / m.units_per_em as f32), ppem * 1.25)
 }
 
 pub static FONT: LazyLock<FontRef<'static>> = LazyLock::new(|| {

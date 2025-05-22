@@ -92,35 +92,42 @@ fn main() -> Result<()> {
         use Key::*;
         let mut shifting = false;
         while let Ok((k, s)) = krx.recv() {
-            if s == true {
-                if k == LeftShift || k == RightShift {
-                    shifting = true;
-                    continue;
-                }
-                let x = match k {
-                    Enter => b"\n",
-                    Space => b" ",
-                    Period => b".",
-                    Slash => b"/",
-                    Backslash => b"\\",
-                    Backspace => b"",
-                    LeftBracket => b"[",
-                    RightBracket => b"]",
-                    Semicolon if shifting => b":",
-                    Semicolon => b";",
-                    Comma => b",",
-
-                    Key0 | Key1 | Key2 | Key3 | Key4 | Key5 | Key6
-                    | Key7 | Key8 | Key9 => &[k as u8 + b'0'],
-
-                    _ => &[k as u8 - 10 + b'a'],
-                };
-                write(pty1.as_fd(), x).unwrap();
-            } else {
+            if !s {
                 if k == LeftShift || k == RightShift {
                     shifting = false;
                 }
+                continue;
             }
+
+            let x = match k {
+                LeftSuper | RightSuper => continue,
+                LeftShift | RightShift => {
+                    shifting = true;
+                    continue;
+                }
+                Enter => b"\n",
+                Space => b" ",
+                Period => b".",
+                Slash => b"/",
+                Backslash => b"\\",
+                Backspace => b"",
+                Equal if shifting => b"+",
+                Equal => b"=",
+                Minus if shifting => b"_",
+                Minus => b"-",
+                LeftBracket if shifting => b"{",
+                LeftBracket => b"[",
+                RightBracket => b"]",
+                Semicolon if shifting => b":",
+                Semicolon => b";",
+                Comma => b",",
+
+                Key0 | Key1 | Key2 | Key3 | Key4 | Key5 | Key6 | Key7
+                | Key8 | Key9 => &[k as u8 + b'0'],
+
+                _ => &[k as u8 - 10 + b'a'],
+            };
+            write(pty1.as_fd(), x).unwrap();
         }
     });
 
@@ -142,9 +149,9 @@ fn main() -> Result<()> {
 
     sleep(Duration::from_millis(100));
     w.update();
-    let ppem = 18.0;
+    let ppem = 20.0;
     let (fw, fh) = render::dims(&FONT, ppem);
-    let cols = (w.get_size().0 as f32 / fw).floor() as u16;
+    let cols = (w.get_size().0 as f32 / fw).floor() as u16 + 1;
     let rows = (w.get_size().1 as f32 / fh).floor() as u16;
     dbg!(rows, cols);
     let mut t = Terminal {
@@ -183,7 +190,7 @@ fn main() -> Result<()> {
 fn tparse() {
     println!("-------------------");
     let mut x = TerminalInputParser::new();
-    for c in "\x1b[32m greninator \x1b[0m".as_bytes() {
+    for c in "\x1b[32;1m greninator \x1b[0m".as_bytes() {
         use ctlfun::TerminalInput::*;
         match x.parse_byte(*c) {
             Char(x) => {
