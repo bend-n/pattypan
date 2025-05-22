@@ -6,7 +6,7 @@ use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
 use std::process::{Command, exit};
 use std::sync::mpsc;
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub mod colors;
 
@@ -130,6 +130,13 @@ fn main() -> Result<()> {
                 Semicolon if shifting => b":",
                 Semicolon => b";",
                 Comma => b",",
+
+                Key0 | Key1 | Key2 | Key3 | Key4 | Key5 | Key6 | Key7
+                | Key8 | Key9
+                    if shifting =>
+                {
+                    &[b")!@#$%^&*("[k as usize]]
+                }
 
                 Key0 | Key1 | Key2 | Key3 | Key4 | Key5 | Key6 | Key7
                 | Key8 | Key9 => &[k as u8 + b'0'],

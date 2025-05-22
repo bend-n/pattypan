@@ -79,11 +79,24 @@ impl Terminal {
                     self.style.color = colors::FOUR[x as usize - 30]
                 }
                 Value(39) => self.style.color = colors::FOREGROUND,
+                Value(x @ (40..=47)) => {
+                    self.style.bg = colors::FOUR[x as usize - 40]
+                }
+                Value(49) => self.style.bg = colors::BACKGROUND,
                 Value(x @ (90..=97)) => {
                     self.style.color = colors::FOUR[x as usize - 72]
                 }
+                Value(x @ (100..=107)) => {
+                    self.style.bg = colors::FOUR[x as usize - 92]
+                }
                 _ => {}
             },
+            Control(ControlFunction {
+                start: b'[',
+                params,
+                end: b'C',
+                ..
+            }) if params == &[Default] => self.cursor.0 += 1,
             Control(ControlFunction {
                 start: b'[',
                 params,

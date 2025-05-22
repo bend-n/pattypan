@@ -47,10 +47,18 @@ pub fn render(
                         .flat_map(|&x| cell.style.color.join(x))
                         .collect::<Vec<u8>>(),
                 );
-                // let mut o =
-                //     Image::build(x.placement.width, x.placement.height)
-                //         .fill(cell.style.bg);
-                // o.overlay_blended(&item);
+                if cell.style.bg != colors::BACKGROUND {
+                    let cell = Image::<_, 4>::build(
+                        sz.ceil() as u32,
+                        (ppem * 1.25).ceil() as u32,
+                    )
+                    .fill(cell.style.bg.join(255));
+                    i.as_mut().overlay_at(
+                        &cell,
+                        4 + (j as f32 * sz) as u32,
+                        (k as f32 * (ppem * 1.25)) as u32 - 20,
+                    );
+                }
 
                 i.as_mut().overlay_blended_at(
                     &item.as_ref(),
