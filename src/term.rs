@@ -3,6 +3,7 @@ use ctlfun::TerminalInput::*;
 use ctlfun::{ControlFunction, TerminalInputParser};
 
 pub struct Terminal {
+    pub style: Style,
     pub cursor: (u16, u16),
     pub size: (u16, u16),
     pub scrollback: Scrollback,
@@ -23,14 +24,30 @@ pub struct Scrollback {
 impl Scrollback {}
 
 #[derive(Clone, Copy)]
-pub struct Cell {
+pub struct Style {
     pub bg: [u8; 3],
     pub color: [u8; 3],
     pub style: u8,
+}
+use crate::colors;
+impl std::default::Default for Style {
+    fn default() -> Self {
+        Self {
+            bg: colors::BACKGROUND,
+            style: 0,
+            color: colors::FOREGROUND,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Default)]
+pub struct Cell {
+    pub style: Style,
     pub letter: Option<char>,
 }
 
 impl Terminal {
+    #[implicit_fn::implicit_fn]
     pub fn rx(&mut self, x: u8) {
         match self.p.parse_byte(x) {
             Continue => {}
@@ -42,13 +59,31 @@ impl Terminal {
                     self.cursor.0 = 1;
                     self.cursor.1 += 1;
                 }
-                self.cells[(self.cursor.1 * self.size.0 + self.cursor.0)
-                    as usize]
-                    .letter = Some(x);
+                let c = &mut self.cells[(self.cursor.1 * self.size.0
+                    + self.cursor.0)
+                    as usize];
+                c.letter = Some(x);
+                c.style = self.style;
             }
             Control(ControlFunction { start: 8, .. }) => {
                 self.cursor.0 -= 1;
             }
+            Control(ControlFunction {
+                start: b'[',
+                params,
+                end: b'm',
+                ..
+            }) => match params.get(0).map(*_).unwrap() {
+                Value(0) => self.style = Style::default(),
+                Value(x @ (30..=37)) => {
+                    self.style.color = colors::FOUR[x as usize - 30]
+                }
+                Value(39) => self.style.color = colors::FOREGROUND,
+                Value(x @ (90..=97)) => {
+                    self.style.color = colors::FOUR[x as usize - 72]
+                }
+                _ => {}
+            },
             Control(ControlFunction {
                 start: b'[',
                 params,

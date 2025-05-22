@@ -1,4 +1,4 @@
-#![feature(deadline_api, deref_patterns)]
+#![feature(deadline_api, deref_patterns, generic_const_exprs)]
 use std::fs::File;
 use std::io::Write;
 use std::iter::successors;
@@ -7,6 +7,8 @@ use std::process::{Command, exit};
 use std::sync::mpsc;
 use std::thread::sleep;
 use std::time::Duration;
+
+pub mod colors;
 
 use anyhow::Result;
 use ctlfun::TerminalInputParser;
@@ -21,7 +23,8 @@ fn spawn(shell: &str) -> Result<OwnedFd> {
     let x = unsafe { forkpty(None, None)? };
     match x {
         ForkptyResult::Child => {
-            let sh = Command::new(shell).spawn()?.wait();
+            let sh =
+                Command::new(shell).env("TERM", "vt100").spawn()?.wait();
             // std::thread::sleep(Duration::from_millis(5000));
             // exit(0);
 
@@ -105,7 +108,13 @@ fn main() -> Result<()> {
                     shifting = true;
                     continue;
                 }
-                Enter => b"\n",
+                Enter => &b"\n"[..],
+                Up => b"\x1b[A",
+                Down => b"\x1b[B",
+                Right => b"\x1b[C",
+                Left => b"\x1d[D",
+                Apostrophe if shifting => b"\"",
+                Apostrophe => b"'",
                 Space => b" ",
                 Period => b".",
                 Slash => b"/",
@@ -155,21 +164,20 @@ fn main() -> Result<()> {
     let rows = (w.get_size().1 as f32 / fh).floor() as u16;
     dbg!(rows, cols);
     let mut t = Terminal {
+        style: Default::default(),
         cursor: (1, 1),
         size: (cols, rows),
         scrollback: Scrollback::default(),
-        cells: vec![
-            Cell {
-                bg: [0; 3],
-                color: [0; 3],
-                style: 0,
-                letter: None,
-            };
-            cols as usize * rows as usize
-        ],
+        cells: vec![Cell::default(); cols as usize * rows as usize],
         p: Default::default(),
         mode: Mode::Normal,
     };
+    let cj =
+        swash::FontRef::from_index(&include_bytes!("../cjk.ttc")[..], 0)
+            .unwrap();
+    let m = cj.metrics(&[]);
+    dbg!(m);
+
     let mut f = File::create("x").unwrap();
     loop {
         while let Ok(x) = trx.recv_timeout(Duration::from_millis(16)) {
@@ -187,10 +195,12 @@ fn main() -> Result<()> {
 }
 #[test]
 
-fn tparse() {
+fn tpaxrse() {
     println!("-------------------");
     let mut x = TerminalInputParser::new();
-    for c in "\x1b[32;1m greninator \x1b[0m".as_bytes() {
+    for c in
+        "\x1b[32;1mgren\x1b[33myellow\x1b[42mbggreen\x1b[0m".as_bytes()
+    {
         use ctlfun::TerminalInput::*;
         match x.parse_byte(*c) {
             Char(x) => {

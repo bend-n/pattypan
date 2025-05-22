@@ -7,8 +7,9 @@ edition = "2024"
 anstream = "0.6.18"
 anyhow = "1.0.98"
 atools = "0.1.6"
+color-hex = "0.2.0"
 ctlfun = { git = "https://github.com/bend-n/ctlfun" }
-fimg = "0.4.44"
+fimg = { git = "https://github.com/bend-n/fimg" }
 implicit-fn = "0.1.0"
 libc = "0.2.172"
 minifb = "0.28.0"
