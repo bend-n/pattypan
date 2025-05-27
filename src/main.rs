@@ -112,7 +112,7 @@ fn main() -> Result<()> {
                 Up => b"\x1b[A",
                 Down => b"\x1b[B",
                 Right => b"\x1b[C",
-                Left => b"\x1d[D",
+                Left => b"\x1b[D",
                 Apostrophe if shifting => b"\"",
                 Apostrophe => b"'",
                 Space => b" ",
@@ -140,7 +140,7 @@ fn main() -> Result<()> {
 
                 Key0 | Key1 | Key2 | Key3 | Key4 | Key5 | Key6 | Key7
                 | Key8 | Key9 => &[k as u8 + b'0'],
-
+                _ if shifting => &[k as u8 - 10 + b'A'],
                 _ => &[k as u8 - 10 + b'a'],
             };
             write(pty1.as_fd(), x).unwrap();
