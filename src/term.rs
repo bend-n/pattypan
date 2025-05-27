@@ -92,54 +92,32 @@ impl Terminal {
                 params,
                 end: b'm',
                 ..
-            }) => match params {
-                &[Value(0)] => self.style = Style::default(),
-                &[Value(x @ (30..=37))] => {
-                    self.style.color = colors::FOUR[x as usize - 30]
+            }) if params.is_empty() => {
+                self.style = Style::default();
+            }
+            Control(ControlFunction {
+                start: b'[',
+                params,
+                end: b'm',
+                ..
+            }) => {
+                let input: Vec<u16> =
+                    params.iter().map(_.value_or(0)).collect();
+                for &action in parse_sgr()
+                    .parse(&input)
+                    .into_result()
+                    .iter()
+                    .flatten()
+                {
+                    use StyleAction::*;
+                    match action {
+                        Reset => self.style = Style::default(),
+                        SetFg(c) => self.style.color = c,
+                        SetBg(c) => self.style.bg = c,
+                        _ => {}
+                    }
                 }
-                &[Value(39)] => self.style.color = colors::FOREGROUND,
-                &[Value(x @ (40..=47))] => {
-                    self.style.bg = colors::FOUR[x as usize - 40]
-                }
-                &[Value(49)] => self.style.bg = colors::BACKGROUND,
-                &[Value(x @ (90..=97))] => {
-                    self.style.color = colors::FOUR[x as usize - 82]
-                }
-                &[Value(x @ (100..=107))] => {
-                    self.style.bg = colors::FOUR[x as usize - 92]
-                }
-                &[Value(38), Value(5), Value(i)] => {
-                    self.style.color = colors::EIGHT[i.min(0xff) as usize];
-                }
-                &[Value(48), Value(5), Value(i)] => {
-                    self.style.bg = colors::EIGHT[i.min(0xff) as usize];
-                }
-                &[Value(38), Value(2), Value(r), Value(g), Value(b)] => {
-                    self.style.color =
-                        [r, g, b].map(|x| x.min(0xff) as u8);
-                }
-                &[Value(48), Value(2), Value(r), Value(g), Value(b)] => {
-                    self.style.bg = [r, g, b].map(|x| x.min(0xff) as u8);
-                }
-                &[
-                    Value(38),
-                    Value(2),
-                    Value(r),
-                    Value(g),
-                    Value(b),
-                    Value(48),
-                    Value(2),
-                    Value(rb),
-                    Value(gb),
-                    Value(bb),
-                ] => {
-                    self.style.bg =
-                        [rb, gb, bb].map(|x| x.min(0xff) as u8);
-                    self.style.color =
-                        [r, g, b].map(|x| x.min(0xff) as u8);
-                }
-                _ => {}
-            },
+            }
             Control(ControlFunction {
                 start: b'[',
                 params,
@@ -216,4 +194,45 @@ impl Terminal {
             _ => unreachable!(),
         }
     }
+}
+#[derive(Clone, Copy, Debug)]
+enum StyleAction {
+    Reset,
+    ModeSet(u16),
+    SetFg([u8; 3]),
+    SetBg([u8; 3]),
+}
+fn value<'a>(
+    r: impl std::ops::RangeBounds<u16>,
+) -> impl Parser<'a, &'a [u16], u16> {
+    any().filter(move |x| r.contains(x))
+}
+use chumsky::prelude::*;
+#[implicit_fn::implicit_fn]
+fn parse_sgr<'a>() -> impl Parser<'a, &'a [u16], Vec<StyleAction>> {
+    use StyleAction::*;
+    let color = choice((
+        // 5;n
+        just(5)
+            .ignore_then(any())
+            .map(|x: u16| colors::EIGHT[x.min(0xff) as usize]),
+        just(2)
+            .ignore_then(any().repeated().collect_exactly::<[u16; 3]>())
+            .map(_.map(|x| x.min(0xff) as u8)),
+    ));
+    choice((
+        just(0u16).to(Reset),
+        value(1..10).map(ModeSet),
+        value(30..=37).map(_ - 30).map(colors::four).map(SetFg),
+        just(38).ignore_then(color.map(SetFg)),
+        just(39).to(SetFg(colors::FOREGROUND)),
+        value(40..=47).map(_ - 40).map(colors::four).map(SetBg),
+        just(48).ignore_then(color.map(SetBg)),
+        just(49).to(SetBg(colors::BACKGROUND)),
+        value(90..=97).map(_ - 82).map(colors::four).map(SetFg),
+        value(100..=107).map(_ - 92).map(colors::four).map(SetBg),
+    ))
+    .repeated()
+    .collect()
+    .labelled("style")
 }

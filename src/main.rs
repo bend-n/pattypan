@@ -2,6 +2,7 @@
     deadline_api,
     deref_patterns,
     generic_const_exprs,
+    impl_trait_in_bindings,
     if_let_guard
 )]
 use std::fs::File;
@@ -127,6 +128,7 @@ fn main() -> Result<()> {
                 Backspace => b"",
                 Equal if shifting => b"+",
                 Equal => b"=",
+                Tab => b"\t",
                 Minus if shifting => b"_",
                 Minus => b"-",
                 LeftBracket if shifting => b"{",

@@ -21,6 +21,10 @@ pub const FOUR: [[u8; 3]; 16] = [
     [255, 255, 255],
 ];
 
+pub fn four(x: u16) -> [u8; 3] {
+    FOUR[x.min(0xf) as usize]
+}
+
 pub const EIGHT: [[u8; 3]; 256] = [
     [0, 0, 0],
     [128, 0, 0],
