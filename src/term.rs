@@ -108,6 +108,12 @@ impl Terminal {
                 &[Value(x @ (100..=107))] => {
                     self.style.bg = colors::FOUR[x as usize - 92]
                 }
+                &[Value(38), Value(5), Value(i)] => {
+                    self.style.color = colors::EIGHT[i.min(0xff) as usize];
+                }
+                &[Value(48), Value(5), Value(i)] => {
+                    self.style.bg = colors::EIGHT[i.min(0xff) as usize];
+                }
                 &[Value(38), Value(2), Value(r), Value(g), Value(b)] => {
                     self.style.color =
                         [r, g, b].map(|x| x.min(0xff) as u8);
