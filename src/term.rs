@@ -73,21 +73,45 @@ impl Terminal {
                 params,
                 end: b'm',
                 ..
-            }) => match params.get(0).map(*_).unwrap() {
-                Value(0) => self.style = Style::default(),
-                Value(x @ (30..=37)) => {
+            }) => match params {
+                &[Value(0)] => self.style = Style::default(),
+                &[Value(x @ (30..=37))] => {
                     self.style.color = colors::FOUR[x as usize - 30]
                 }
-                Value(39) => self.style.color = colors::FOREGROUND,
-                Value(x @ (40..=47)) => {
+                &[Value(39)] => self.style.color = colors::FOREGROUND,
+                &[Value(x @ (40..=47))] => {
                     self.style.bg = colors::FOUR[x as usize - 40]
                 }
-                Value(49) => self.style.bg = colors::BACKGROUND,
-                Value(x @ (90..=97)) => {
+                &[Value(49)] => self.style.bg = colors::BACKGROUND,
+                &[Value(x @ (90..=97))] => {
                     self.style.color = colors::FOUR[x as usize - 72]
                 }
-                Value(x @ (100..=107)) => {
+                &[Value(x @ (100..=107))] => {
                     self.style.bg = colors::FOUR[x as usize - 92]
+                }
+                &[Value(38), Value(2), Value(r), Value(g), Value(b)] => {
+                    self.style.color =
+                        [r, g, b].map(|x| x.min(0xff) as u8);
+                }
+                &[Value(48), Value(2), Value(r), Value(g), Value(b)] => {
+                    self.style.bg = [r, g, b].map(|x| x.min(0xff) as u8);
+                }
+                &[
+                    Value(38),
+                    Value(2),
+                    Value(r),
+                    Value(g),
+                    Value(b),
+                    Value(48),
+                    Value(2),
+                    Value(rb),
+                    Value(gb),
+                    Value(bb),
+                ] => {
+                    self.style.bg =
+                        [rb, gb, bb].map(|x| x.min(0xff) as u8);
+                    self.style.color =
+                        [r, g, b].map(|x| x.min(0xff) as u8);
                 }
                 _ => {}
             },

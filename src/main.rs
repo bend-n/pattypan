@@ -206,7 +206,7 @@ fn tpaxrse() {
     println!("-------------------");
     let mut x = TerminalInputParser::new();
     for c in
-        "\x1b[32;1mgren\x1b[33myellow\x1b[42mbggreen\x1b[0m".as_bytes()
+        "[38;2;255;255;255;48;2;255;255;255m [0m[38;2;255;255;255;48;2;0;0;0m▀[0m[38;2;255;255;255;48;2;0;0;0m▀[0m".as_bytes()
     {
         use ctlfun::TerminalInput::*;
         match x.parse_byte(*c) {

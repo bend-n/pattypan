@@ -18,62 +18,65 @@ pub fn render(
     let sz = ppem * (m.max_width / m.units_per_em as f32);
     let mut i = Image::build(w as _, h as _).fill(colors::BACKGROUND);
     for (col, k) in x.cells.chunks_exact(x.size.0 as _).zip(0..).skip(1) {
-        for (cell, j) in
-            col.iter().skip(2).zip(0..).filter(_.0.letter.is_some())
-        {
-            let id = FONT.charmap().map(cell.letter.unwrap());
-
-            let x = Render::new(&[Source::Outline])
-                .format(Format::Alpha)
-                .render(
-                    &mut ScaleContext::new()
-                        .builder(*FONT)
-                        .size(ppem)
-                        .build(),
-                    id,
+        for (cell, j) in col.iter().skip(2).zip(0..) {
+            if cell.style.bg != colors::BACKGROUND {
+                let cell = Image::<_, 4>::build(
+                    sz.ceil() as u32,
+                    (ppem * 1.25).ceil() as u32,
                 )
-                .unwrap();
-            unsafe {
-                if x.placement.width == 0 {
-                    continue;
-                }
-                let item = Image::<_, 4>::build(
-                    x.placement.width,
-                    x.placement.height,
-                )
-                .buf(
-                    x.data
-                        .iter()
-                        .flat_map(|&x| cell.style.color.join(x))
-                        .collect::<Vec<u8>>(),
-                );
-                if cell.style.bg != colors::BACKGROUND {
-                    let cell = Image::<_, 4>::build(
-                        sz.ceil() as u32,
-                        (ppem * 1.25).ceil() as u32,
-                    )
-                    .fill(cell.style.bg.join(255));
+                .fill(cell.style.bg.join(255));
+                unsafe {
                     i.as_mut().overlay_at(
                         &cell,
                         4 + (j as f32 * sz) as u32,
                         (k as f32 * (ppem * 1.25)) as u32 - 20,
+                    )
+                };
+            }
+            if let Some(l) = cell.letter {
+                let id = FONT.charmap().map(l);
+
+                let x = Render::new(&[Source::Outline])
+                    .format(Format::Alpha)
+                    .render(
+                        &mut ScaleContext::new()
+                            .builder(*FONT)
+                            .size(ppem)
+                            .build(),
+                        id,
+                    )
+                    .unwrap();
+                unsafe {
+                    if x.placement.width == 0 {
+                        continue;
+                    }
+                    let item = Image::<_, 4>::build(
+                        x.placement.width,
+                        x.placement.height,
+                    )
+                    .buf(
+                        x.data
+                            .iter()
+                            .flat_map(|&x| cell.style.color.join(x))
+                            .collect::<Vec<u8>>(),
+                    );
+
+                    i.as_mut().overlay_blended_at(
+                        &item.as_ref(),
+                        // &Image::<Box<[u8]>, 4>::from(
+                        //     Image::<_, 1>::build(
+                        //         x.placement.width,
+                        //         x.placement.height,
+                        //     )
+                        //     .buf(&*x.data),
+                        // )
+                        // .as_ref(),
+                        4 + ((j as f32 * sz) + x.placement.left as f32)
+                            as u32,
+                        ((k as f32 * (ppem * 1.25)) as u32)
+                            .saturating_sub(x.placement.top as u32),
                     );
                 }
-
-                i.as_mut().overlay_blended_at(
-                    &item.as_ref(),
-                    // &Image::<Box<[u8]>, 4>::from(
-                    //     Image::<_, 1>::build(
-                    //         x.placement.width,
-                    //         x.placement.height,
-                    //     )
-                    //     .buf(&*x.data),
-                    // )
-                    // .as_ref(),
-                    4 + ((j as f32 * sz) + x.placement.left as f32) as u32,
-                    ((k as f32 * (ppem * 1.25)) as u32)
-                        .saturating_sub(x.placement.top as u32),
-                );
             }
         }
     }
