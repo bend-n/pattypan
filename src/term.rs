@@ -1,3 +1,5 @@
+use std::iter::repeat_n;
+
 use ctlfun::Parameter::*;
 use ctlfun::TerminalInput::*;
 use ctlfun::{ControlFunction, TerminalInputParser};
@@ -6,8 +8,9 @@ pub struct Terminal {
     pub style: Style,
     pub cursor: (u16, u16),
     pub size: (u16, u16),
-    pub scrollback: Scrollback,
+
     pub cells: Vec<Cell>,
+    pub row: usize,
     pub p: TerminalInputParser,
     pub mode: Mode,
 }
@@ -15,13 +18,6 @@ pub enum Mode {
     Normal,
     Raw,
 }
-#[derive(Default)]
-pub struct Scrollback {
-    // invariant: len() / t.size.w == height
-    pub history: Vec<Cell>,
-    pub height: u16,
-}
-impl Scrollback {}
 
 #[derive(Clone, Copy)]
 pub struct Style {
@@ -59,9 +55,32 @@ impl Terminal {
                     self.cursor.0 = 1;
                     self.cursor.1 += 1;
                 }
-                let c = &mut self.cells[(self.cursor.1 * self.size.0
-                    + self.cursor.0)
-                    as usize];
+                while self.cursor.1 >= self.size.1 {
+                    println!("newline");
+                    self.cursor.1 -= 1;
+                    // self.cells
+                    //     .drain(..self.size.0 as usize)
+                    //     .for_each(drop);
+                    self.row += 1;
+                    self.cells.extend(repeat_n(
+                        Cell::default(),
+                        self.size.0 as usize,
+                    ));
+                }
+                assert!(
+                    self.cells.len()
+                        == self.row * self.size.0 as usize
+                            + self.size.0 as usize * self.size.1 as usize
+                );
+                assert!(
+                    self.cells[self.row * self.size.0 as usize..].len()
+                        == self.size.0 as usize * self.size.1 as usize
+                );
+                dbg!(self.cursor, self.size);
+                let c = &mut self.cells[self.row * self.size.0 as usize..]
+                    // y*w+x
+                    [(self.cursor.1 * self.size.0 + self.cursor.0)
+                        as usize];
                 c.letter = Some(x);
                 c.style = self.style;
             }
@@ -84,7 +103,7 @@ impl Terminal {
                 }
                 &[Value(49)] => self.style.bg = colors::BACKGROUND,
                 &[Value(x @ (90..=97))] => {
-                    self.style.color = colors::FOUR[x as usize - 72]
+                    self.style.color = colors::FOUR[x as usize - 82]
                 }
                 &[Value(x @ (100..=107))] => {
                     self.style.bg = colors::FOUR[x as usize - 92]
@@ -118,20 +137,47 @@ impl Terminal {
             Control(ControlFunction {
                 start: b'[',
                 params,
+                end: b'A',
+                ..
+            }) if let [p] = params => {
+                self.cursor.1 -= p.value_or(1);
+            }
+            Control(ControlFunction {
+                start: b'[',
+                params,
+                end: b'B',
+                ..
+            }) if let [p] = params => {
+                self.cursor.1 += p.value_or(1);
+            }
+            Control(ControlFunction {
+                start: b'[',
+                params,
                 end: b'C',
                 ..
-            }) if params == &[Default] => self.cursor.0 += 1,
+            }) if let [p] = params => {
+                self.cursor.0 += p.value_or(1);
+            }
+            Control(ControlFunction {
+                start: b'[',
+                params,
+                end: b'D',
+                ..
+            }) if let [p] = params => {
+                self.cursor.0 -= p.value_or(1);
+            }
             Control(ControlFunction {
                 start: b'[',
                 params,
                 end: b'K',
                 ..
             }) if params == &[Default] => {
-                for cell in &mut self.cells[(self.cursor.1 * self.size.0
-                    + self.cursor.0
-                    + 1)
-                    as usize
-                    ..(self.cursor.1 * self.size.0 + self.size.0) as usize]
+                for cell in &mut self.cells
+                    [self.row * self.size.0 as usize..]
+                    [(self.cursor.1 * self.size.0 + self.cursor.0 + 1)
+                        as usize
+                        ..(self.cursor.1 * self.size.0 + self.size.0)
+                            as usize]
                 // [self.cursor.1 as usize..self.size.0 as usize]
                 // [self.cursor.0 as usize..]
                 {

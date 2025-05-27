@@ -1,4 +1,9 @@
-#![feature(deadline_api, deref_patterns, generic_const_exprs)]
+#![feature(
+    deadline_api,
+    deref_patterns,
+    generic_const_exprs,
+    if_let_guard
+)]
 use std::fs::File;
 use std::io::Write;
 use std::iter::successors;
@@ -174,7 +179,7 @@ fn main() -> Result<()> {
         style: Default::default(),
         cursor: (1, 1),
         size: (cols, rows),
-        scrollback: Scrollback::default(),
+        row: 0,
         cells: vec![Cell::default(); cols as usize * rows as usize],
         p: Default::default(),
         mode: Mode::Normal,

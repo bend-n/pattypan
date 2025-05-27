@@ -17,7 +17,11 @@ pub fn render(
     let m = FONT.metrics(&[]);
     let sz = ppem * (m.max_width / m.units_per_em as f32);
     let mut i = Image::build(w as _, h as _).fill(colors::BACKGROUND);
-    for (col, k) in x.cells.chunks_exact(x.size.0 as _).zip(0..).skip(1) {
+    for (col, k) in x.cells[x.size.0 as usize * x.row..]
+        .chunks_exact(x.size.0 as _)
+        .zip(0..)
+        .skip(1)
+    {
         for (cell, j) in col.iter().skip(2).zip(0..) {
             if cell.style.bg != colors::BACKGROUND {
                 let cell = Image::<_, 4>::build(
