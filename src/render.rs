@@ -51,6 +51,16 @@ pub fn render(
                     )
                 };
             }
+            if (cell.style.flags & crate::term::STRIKETHROUGH) != 0 {
+                unsafe {
+                    i.as_mut().overlay_at(
+                        &Image::<_, 4>::build(sz.ceil() as u32, 2)
+                            .fill(color.join(255)),
+                        4 + (j as f32 * sz) as u32,
+                        (k as f32 * (ppem * 1.25)) as u32 - 5,
+                    )
+                };
+            }
             if let Some(l) = cell.letter {
                 let f = if (cell.style.flags & crate::term::ITALIC) != 0 {
                     *IFONT
