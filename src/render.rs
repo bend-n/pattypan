@@ -37,6 +37,20 @@ pub fn render(
                     )
                 };
             }
+            let mut color = cell.style.color;
+            if (cell.style.flags & crate::term::DIM) != 0 {
+                color = color.map(|x| x / 2);
+            }
+            if (cell.style.flags & crate::term::UNDERLINE) != 0 {
+                unsafe {
+                    i.as_mut().overlay_at(
+                        &Image::<_, 4>::build(sz.ceil() as u32, 2)
+                            .fill(color.join(255)),
+                        4 + (j as f32 * sz) as u32,
+                        (k as f32 * (ppem * 1.25)) as u32 + 5,
+                    )
+                };
+            }
             if let Some(l) = cell.letter {
                 let f = if (cell.style.flags & crate::term::ITALIC) != 0 {
                     *IFONT
@@ -67,10 +81,7 @@ pub fn render(
                     if x.placement.width == 0 {
                         continue;
                     }
-                    let mut c = cell.style.color;
-                    if (cell.style.flags & crate::term::DIM) != 0 {
-                        c = c.map(|x| x / 2);
-                    }
+
                     let item = Image::<_, 4>::build(
                         x.placement.width,
                         x.placement.height,
@@ -78,7 +89,7 @@ pub fn render(
                     .buf(
                         x.data
                             .iter()
-                            .flat_map(|&x| c.join(x))
+                            .flat_map(|&x| color.join(x))
                             .collect::<Vec<u8>>(),
                     );
 
