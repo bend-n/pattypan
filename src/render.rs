@@ -114,6 +114,16 @@ pub fn render(
             }
         }
     }
+
+    let cell = Image::<_, 4>::build(3, (ppem * 1.25).ceil() as u32)
+        .fill([0xFF, 0xCC, 0x66, 255]);
+    unsafe {
+        i.as_mut().overlay_at(
+            &cell,
+            4 + ((x.cursor.0 - 1) as f32 * sz) as u32,
+            (x.cursor.1 as f32 * (ppem * 1.25)) as u32 - 20,
+        )
+    };
     i
 }
 
