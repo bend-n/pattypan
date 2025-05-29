@@ -48,7 +48,6 @@ impl Terminal {
         match self.p.parse_byte(x) {
             Continue => {}
             Char(x) => {
-                dbg!(x);
                 self.cursor.0 += 1;
                 if self.cursor.0 == self.size.0 {
                     println!("overflow");
@@ -76,7 +75,7 @@ impl Terminal {
                     self.cells[self.row * self.size.0 as usize..].len()
                         == self.size.0 as usize * self.size.1 as usize
                 );
-                dbg!(self.cursor, self.size);
+                dbg!(self.cursor);
                 let c = &mut self.cells[self.row * self.size.0 as usize..]
                     // y*w+x
                     [(self.cursor.1 * self.size.0 + self.cursor.0)
@@ -174,10 +173,18 @@ impl Terminal {
                     cell.letter = None;
                 }
             }
-            Control(ControlFunction { start: b'\r', .. }) => {
+            Control(ControlFunction {
+                start: b'\r',
+                params: [],
+                ..
+            }) => {
                 self.cursor.0 = 1;
             }
-            Control(ControlFunction { start: b'\n', .. }) => {
+            Control(ControlFunction {
+                start: b'\n',
+                params: [],
+                ..
+            }) => {
                 self.cursor.1 += 1;
             }
             Control(x) => {
