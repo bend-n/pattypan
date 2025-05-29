@@ -2,9 +2,9 @@ use std::sync::LazyLock;
 
 use atools::Join;
 use fimg::BlendingOverlayAt;
-use swash::FontRef;
 use swash::scale::{Render, ScaleContext, Source};
 use swash::zeno::Format;
+use swash::{FontDataRef, FontRef, Instance, Setting, Style, Weight};
 
 use crate::colors;
 
@@ -39,23 +39,20 @@ pub fn render(
             }
             if let Some(l) = cell.letter {
                 let id = FONT.charmap().map(l);
-
+                let mut scbd = ScaleContext::new();
+                let mut scbd = scbd.builder(*FONT);
+                scbd = scbd.size(ppem);
+                if (cell.style.flags & crate::term::BOLD) != 0 {
+                    scbd = scbd.variations(
+                        BFONT
+                            .values()
+                            .zip(FONT.variations())
+                            .map(|x| (x.1.tag(), x.0)),
+                    );
+                }
                 let x = Render::new(&[Source::Outline])
                     .format(Format::Alpha)
-                    .embolden(
-                        if (cell.style.flags & crate::term::BOLD) != 0 {
-                            0.5
-                        } else {
-                            0.0
-                        },
-                    )
-                    .render(
-                        &mut ScaleContext::new()
-                            .builder(*FONT)
-                            .size(ppem)
-                            .build(),
-                        id,
-                    )
+                    .render(&mut scbd.build(), id)
                     .unwrap();
                 unsafe {
                     if x.placement.width == 0 {
@@ -104,12 +101,22 @@ pub static FONT: LazyLock<FontRef<'static>> = LazyLock::new(|| {
         .unwrap()
 });
 
+pub static BFONT: LazyLock<Instance<'static>> =
+    LazyLock::new(|| FONT.instances().find_by_name("Bold").unwrap());
+
+// pub static IFONT: LazyLock<FontRef<'static>> = LazyLock::new(|| {
+//     FONT.fonts()
+//         .find(|f| f.attributes().style() == Style::Italic)
+//         .unwrap()
+// });
 use fimg::{BlendingOverlay, Image, OverlayAt};
 // let x = b"echo -e \"\x1b(0lqqqk\nx   \x1b(Bx\nmqqqj";
 // let x = String::from_utf8_lossy(&x);
 // println!("{}", x);
 #[test]
 fn t() {
+    FONT.instances()
+        .for_each(|f| drop(dbg!(f.name(None).unwrap().to_string())));
     let f =
         FontRef::from_index(&include_bytes!("../cjk.ttc")[..], 0).unwrap();
 
