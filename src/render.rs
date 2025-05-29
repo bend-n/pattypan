@@ -4,7 +4,7 @@ use atools::Join;
 use fimg::BlendingOverlayAt;
 use swash::scale::{Render, ScaleContext, Source};
 use swash::zeno::Format;
-use swash::{FontDataRef, FontRef, Instance, Setting, Style, Weight};
+use swash::{FontRef, Instance};
 
 use crate::colors;
 
@@ -67,6 +67,10 @@ pub fn render(
                     if x.placement.width == 0 {
                         continue;
                     }
+                    let mut c = cell.style.color;
+                    if (cell.style.flags & crate::term::DIM) != 0 {
+                        c = c.map(|x| x / 2);
+                    }
                     let item = Image::<_, 4>::build(
                         x.placement.width,
                         x.placement.height,
@@ -74,7 +78,7 @@ pub fn render(
                     .buf(
                         x.data
                             .iter()
-                            .flat_map(|&x| cell.style.color.join(x))
+                            .flat_map(|&x| c.join(x))
                             .collect::<Vec<u8>>(),
                     );
 
