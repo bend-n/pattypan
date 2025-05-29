@@ -120,34 +120,34 @@ impl Terminal {
             }
             Control(ControlFunction {
                 start: b'[',
-                params,
+                params: [p],
                 end: b'A',
                 ..
-            }) if let [p] = params => {
+            }) => {
                 self.cursor.1 -= p.value_or(1);
             }
             Control(ControlFunction {
                 start: b'[',
-                params,
+                params: [p],
                 end: b'B',
                 ..
-            }) if let [p] = params => {
+            }) => {
                 self.cursor.1 += p.value_or(1);
             }
             Control(ControlFunction {
                 start: b'[',
-                params,
+                params: [p],
                 end: b'C',
                 ..
-            }) if let [p] = params => {
+            }) => {
                 self.cursor.0 += p.value_or(1);
             }
             Control(ControlFunction {
                 start: b'[',
-                params,
+                params: [p],
                 end: b'D',
                 ..
-            }) if let [p] = params => {
+            }) => {
                 self.cursor.0 -= p.value_or(1);
             }
             Control(ControlFunction {
