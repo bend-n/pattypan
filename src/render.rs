@@ -38,16 +38,25 @@ pub fn render(
                 };
             }
             if let Some(l) = cell.letter {
-                let id = FONT.charmap().map(l);
+                let f = if (cell.style.flags & crate::term::ITALIC) != 0 {
+                    *IFONT
+                } else {
+                    *FONT
+                };
+                let id = f.charmap().map(l);
                 let mut scbd = ScaleContext::new();
-                let mut scbd = scbd.builder(*FONT);
+                let mut scbd = scbd.builder(f);
                 scbd = scbd.size(ppem);
                 if (cell.style.flags & crate::term::BOLD) != 0 {
                     scbd = scbd.variations(
-                        BFONT
-                            .values()
-                            .zip(FONT.variations())
-                            .map(|x| (x.1.tag(), x.0)),
+                        if (cell.style.flags & crate::term::ITALIC) != 0 {
+                            *BIFONT
+                        } else {
+                            *BFONT
+                        }
+                        .values()
+                        .zip(f.variations())
+                        .map(|x| (x.1.tag(), x.0)),
                     );
                 }
                 let x = Render::new(&[Source::Outline])
@@ -71,14 +80,6 @@ pub fn render(
 
                     i.as_mut().overlay_blended_at(
                         &item.as_ref(),
-                        // &Image::<Box<[u8]>, 4>::from(
-                        //     Image::<_, 1>::build(
-                        //         x.placement.width,
-                        //         x.placement.height,
-                        //     )
-                        //     .buf(&*x.data),
-                        // )
-                        // .as_ref(),
                         4 + ((j as f32 * sz) + x.placement.left as f32)
                             as u32,
                         ((k as f32 * (ppem * 1.25)) as u32)
@@ -101,21 +102,29 @@ pub static FONT: LazyLock<FontRef<'static>> = LazyLock::new(|| {
         .unwrap()
 });
 
+pub static IFONT: LazyLock<FontRef<'static>> = LazyLock::new(|| {
+    FontRef::from_index(
+        &include_bytes!("../CascadiaCodeNFItalic.ttf")[..],
+        0,
+    )
+    .unwrap()
+});
+
+pub static BIFONT: LazyLock<Instance<'static>> = LazyLock::new(|| {
+    IFONT.instances().find_by_name("Bold Italic").unwrap()
+});
+
 pub static BFONT: LazyLock<Instance<'static>> =
     LazyLock::new(|| FONT.instances().find_by_name("Bold").unwrap());
 
-// pub static IFONT: LazyLock<FontRef<'static>> = LazyLock::new(|| {
-//     FONT.fonts()
-//         .find(|f| f.attributes().style() == Style::Italic)
-//         .unwrap()
-// });
-use fimg::{BlendingOverlay, Image, OverlayAt};
+use fimg::{Image, OverlayAt};
 // let x = b"echo -e \"\x1b(0lqqqk\nx   \x1b(Bx\nmqqqj";
 // let x = String::from_utf8_lossy(&x);
 // println!("{}", x);
 #[test]
 fn t() {
-    FONT.instances()
+    IFONT
+        .instances()
         .for_each(|f| drop(dbg!(f.name(None).unwrap().to_string())));
     let f =
         FontRef::from_index(&include_bytes!("../cjk.ttc")[..], 0).unwrap();
