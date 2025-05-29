@@ -42,6 +42,13 @@ pub fn render(
 
                 let x = Render::new(&[Source::Outline])
                     .format(Format::Alpha)
+                    .embolden(
+                        if (cell.style.flags & crate::term::BOLD) != 0 {
+                            0.5
+                        } else {
+                            0.0
+                        },
+                    )
                     .render(
                         &mut ScaleContext::new()
                             .builder(*FONT)

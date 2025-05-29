@@ -23,14 +23,14 @@ pub enum Mode {
 pub struct Style {
     pub bg: [u8; 3],
     pub color: [u8; 3],
-    pub style: u8,
+    pub flags: u8,
 }
 use crate::colors;
 impl std::default::Default for Style {
     fn default() -> Self {
         Self {
             bg: colors::BACKGROUND,
-            style: 0,
+            flags: 0,
             color: colors::FOREGROUND,
         }
     }
@@ -114,6 +114,12 @@ impl Terminal {
                         Reset => self.style = Style::default(),
                         SetFg(c) => self.style.color = c,
                         SetBg(c) => self.style.bg = c,
+                        ModeSet(1) => self.style.flags |= BOLD,
+                        ModeSet(2) => self.style.flags |= DIM,
+                        ModeSet(3) => self.style.flags |= ITALIC,
+                        ModeSet(4) => self.style.flags |= UNDERLINE,
+                        ModeSet(9) => self.style.flags |= STRIKETHROUGH,
+                        ModeSet(22) => self.style.flags &= !(BOLD | DIM),
                         _ => {}
                     }
                 }
@@ -202,6 +208,12 @@ enum StyleAction {
     SetFg([u8; 3]),
     SetBg([u8; 3]),
 }
+pub const BOLD: u8 = 1;
+pub const DIM: u8 = 1 << 1;
+pub const ITALIC: u8 = 1 << 2;
+pub const UNDERLINE: u8 = 1 << 3;
+pub const STRIKETHROUGH: u8 = 1 << 4;
+
 fn value<'a>(
     r: impl std::ops::RangeBounds<u16>,
 ) -> impl Parser<'a, &'a [u16], u16> {
