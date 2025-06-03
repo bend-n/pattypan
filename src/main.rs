@@ -1,4 +1,5 @@
 #![feature(
+    generic_assert,
     deadline_api,
     deref_patterns,
     generic_const_exprs,
@@ -25,19 +26,21 @@ use render::FONT;
 use term::*;
 mod render;
 mod term;
+use libc::{
+    F_GETFL, F_SETFL, O_NONBLOCK, TIOCSWINSZ, fcntl, ioctl, winsize,
+};
 fn spawn(shell: &str) -> Result<OwnedFd> {
     let x = unsafe { forkpty(None, None)? };
     match x {
         ForkptyResult::Child => {
             let sh =
-                Command::new(shell).env("TERM", "vt100").spawn()?.wait();
+                Command::new(shell).env("TERM", "xterm").spawn()?.wait();
             // std::thread::sleep(Duration::from_millis(5000));
             // exit(0);
 
             exit(0);
         }
         ForkptyResult::Parent { child, master } => {
-            use libc::{F_GETFL, F_SETFL, O_NONBLOCK, fcntl};
             unsafe {
                 assert_eq!(
                     fcntl(
@@ -96,6 +99,7 @@ fn main() -> Result<()> {
 
     let pty = spawn("bash")?;
     let pty1 = pty.try_clone()?;
+    let pty2 = pty.try_clone()?;
 
     std::thread::spawn(move || {
         use Key::*;
@@ -159,7 +163,7 @@ fn main() -> Result<()> {
 
     std::thread::spawn(move || {
         loop {
-            let x = successors(read(pty.as_fd()), |_| read(pty.as_fd()))
+            let x = successors(read(pty2.as_fd()), |_| read(pty2.as_fd()))
                 .flatten()
                 .collect::<Vec<u8>>();
             if !x.is_empty() {
@@ -185,6 +189,15 @@ fn main() -> Result<()> {
         cells: vec![Cell::default(); cols as usize * rows as usize],
         p: Default::default(),
         mode: Mode::Normal,
+    };
+    unsafe {
+        let x = winsize {
+            ws_row: rows,
+            ws_col: cols,
+            ws_xpixel: w.get_size().0 as _,
+            ws_ypixel: w.get_size().1 as _,
+        };
+        assert!(ioctl(pty.as_raw_fd(), TIOCSWINSZ, &raw const x) == 0);
     };
     let cj =
         swash::FontRef::from_index(&include_bytes!("../cjk.ttc")[..], 0)
@@ -212,9 +225,7 @@ fn main() -> Result<()> {
 fn tpaxrse() {
     println!("-------------------");
     let mut x = TerminalInputParser::new();
-    for c in
-        "[38;2;255;255;255;48;2;255;255;255m [0m[38;2;255;255;255;48;2;0;0;0m▀[0m[38;2;255;255;255;48;2;0;0;0m▀[0m".as_bytes()
-    {
+    for c in "\x1b[?2004l\nbash".as_bytes() {
         use ctlfun::TerminalInput::*;
         match x.parse_byte(*c) {
             Char(x) => {
