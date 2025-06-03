@@ -75,7 +75,7 @@ impl Terminal {
                     self.cells[self.row * self.size.0 as usize..].len()
                         == self.size.0 as usize * self.size.1 as usize
                 );
-                dbg!(self.cursor);
+                // dbg!(self.cursor);
                 let c = &mut self.cells[self.row * self.size.0 as usize..]
                     // y*w+x
                     [(self.cursor.1 * self.size.0 + self.cursor.0)
@@ -117,8 +117,13 @@ impl Terminal {
                         ModeSet(2) => self.style.flags |= DIM,
                         ModeSet(3) => self.style.flags |= ITALIC,
                         ModeSet(4) => self.style.flags |= UNDERLINE,
+                        ModeSet(7) => std::mem::swap(
+                            &mut self.style.bg,
+                            &mut self.style.color,
+                        ),
                         ModeSet(9) => self.style.flags |= STRIKETHROUGH,
                         ModeSet(22) => self.style.flags &= !(BOLD | DIM),
+
                         _ => {}
                     }
                 }
@@ -187,6 +192,13 @@ impl Terminal {
             }) => {
                 self.cursor.1 += 1;
             }
+            Control(ControlFunction {
+                start: b'\x1b',
+                params: [],
+                bytes: [b'('],
+                end: b'B',
+                ..
+            }) => {}
             Control(x) => {
                 dbg!(x);
                 println!(

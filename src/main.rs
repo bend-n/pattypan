@@ -34,7 +34,7 @@ fn spawn(shell: &str) -> Result<OwnedFd> {
     match x {
         ForkptyResult::Child => {
             let sh =
-                Command::new(shell).env("TERM", "xterm").spawn()?.wait();
+                Command::new(shell).env("TERM", "vt100").spawn()?.wait();
             // std::thread::sleep(Duration::from_millis(5000));
             // exit(0);
 
@@ -225,7 +225,7 @@ fn main() -> Result<()> {
 fn tpaxrse() {
     println!("-------------------");
     let mut x = TerminalInputParser::new();
-    for c in "\x1b[?2004l\nbash".as_bytes() {
+    for c in "[?2004h(B)0[1;40r[m[?7h[?1h=[?1h=[H[J[0;7m  GNU nano 8.4                                        New Buffer                                                  [1;113H[m[38;33H[0;7m[ Welcome to nano.  For basic help, type Ctrl+G. ][m".as_bytes() {
         use ctlfun::TerminalInput::*;
         match x.parse_byte(*c) {
             Char(x) => {
