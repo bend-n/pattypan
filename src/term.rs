@@ -1,4 +1,5 @@
 use std::iter::repeat_n;
+use std::ops::Not;
 
 use ctlfun::Parameter::*;
 use ctlfun::TerminalInput::*;
@@ -14,6 +15,29 @@ pub struct Terminal {
     pub row: usize,
     pub p: TerminalInputParser,
     pub mode: Mode,
+
+    pub alternate: Option<Box<Self>>,
+}
+
+use std::default::Default::default;
+impl Terminal {
+    pub fn new(sz @ (c, r): (u16, u16), alt: bool) -> Self {
+        Self {
+            style: default(),
+            saved_cursor: (1, 1),
+            cursor: (1, 1),
+            size: sz,
+            row: 0,
+            cells: vec![Cell::default(); c as usize * r as usize],
+            p: default(),
+            mode: Mode::Normal,
+
+            alternate: alt
+                .not()
+                .then(|| Terminal::new(sz, true))
+                .map(Box::new),
+        }
+    }
 }
 pub enum Mode {
     Normal,
@@ -49,6 +73,9 @@ impl Terminal {
     }
     fn decrc(&mut self) {
         self.cursor = self.saved_cursor;
+    }
+    fn clear(&mut self) {
+        // TODO
     }
     #[implicit_fn::implicit_fn]
     pub fn rx(&mut self, x: u8) {
@@ -229,7 +256,28 @@ impl Terminal {
             ) => {
                 self.decrc();
             }
-
+            Control(ControlFunction {
+                start: b'[',
+                params: [Value(n)],
+                end: b'h' | b'l',
+                ..
+            }) => match n {
+                2004 => {}
+                1047 if let Some(mut alt) = self.alternate.take() => {
+                    alt.clear();
+                    std::mem::swap(self, &mut *alt);
+                    self.alternate = Some(alt);
+                }
+                1048 => self.decsc(),
+                1049 if let Some(mut alt) = self.alternate.take() => {
+                    alt.clear();
+                    self.decsc();
+                    std::mem::swap(self, &mut *alt);
+                    self.decrc();
+                    self.alternate = Some(alt);
+                }
+                _ => {}
+            },
             Control(ControlFunction {
                 start: b'\x1b',
                 params: [],

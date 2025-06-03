@@ -4,7 +4,8 @@
     deref_patterns,
     generic_const_exprs,
     impl_trait_in_bindings,
-    if_let_guard
+    if_let_guard,
+    import_trait_associated_functions
 )]
 use std::fs::File;
 use std::io::Write;
@@ -127,6 +128,7 @@ fn main() -> Result<()> {
                 Apostrophe => b"'",
                 Space => b" ",
                 Period => b".",
+                Slash if shifting => b"?",
                 Slash => b"/",
                 Backslash => b"\\",
                 Backspace => b"",
@@ -181,16 +183,7 @@ fn main() -> Result<()> {
     let cols = (w.get_size().0 as f32 / fw).floor() as u16 + 1;
     let rows = (w.get_size().1 as f32 / fh).floor() as u16;
     dbg!(rows, cols);
-    let mut t = Terminal {
-        style: Default::default(),
-        saved_cursor: (1, 1),
-        cursor: (1, 1),
-        size: (cols, rows),
-        row: 0,
-        cells: vec![Cell::default(); cols as usize * rows as usize],
-        p: Default::default(),
-        mode: Mode::Normal,
-    };
+    let mut t = Terminal::new((cols, rows), false);
     unsafe {
         let x = winsize {
             ws_row: rows,
@@ -226,7 +219,7 @@ fn main() -> Result<()> {
 fn tpaxrse() {
     println!("-------------------");
     let mut x = TerminalInputParser::new();
-    for c in "[?2004h(B)0[1;40r[m[?7h[?1h=[?1h=[H[J[0;7m  GNU nano 8.4                                        New Buffer                                                  [1;113H[m[38;33H[0;7m[ Welcome to nano.  For basic help, type Ctrl+G. ][m".as_bytes() {
+    for c in "\x1b[?1049h".as_bytes() {
         use ctlfun::TerminalInput::*;
         match x.parse_byte(*c) {
             Char(x) => {
