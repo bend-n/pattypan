@@ -196,6 +196,14 @@ impl Terminal {
             }
             Control(ControlFunction {
                 start: b'[',
+                end: b'H',
+                ..
+            }) => {
+                //home
+                self.cursor.0 = 1
+            }
+            Control(ControlFunction {
+                start: b'[',
                 params,
                 end: b'K',
                 ..

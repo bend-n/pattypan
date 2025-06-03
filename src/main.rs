@@ -124,6 +124,8 @@ fn main() -> Result<()> {
                 Down => b"\x1b[B",
                 Right => b"\x1b[C",
                 Left => b"\x1b[D",
+                NumPad7 | Home => b"\x1b[H",
+                NumPad1 | End => b"\x1b[F",
                 Apostrophe if shifting => b"\"",
                 Apostrophe => b"'",
                 Space => b" ",

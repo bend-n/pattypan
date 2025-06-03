@@ -1,7 +1,1 @@
-]0;os@klunk:~/pattypan[?2004h[os@klunk pattypan]$ [K[os@klunk pattypan]$ tput cols
-[?2004l106
-]0;os@klunk:~/pattypan[?2004h[os@klunk pattypan]$ tput cols[K[K[K[Krows
-[?2004ltput: unknown terminfo capability 'rows'
-]0;os@klunk:~/pattypan[?2004h[os@klunk pattypan]$ tput lines
-[?2004l40
-]0;os@klunk:~/pattypan[?2004h[os@klunk pattypan]$ «
+]0;os@klunk:~/pattypan[?2004h[os@klunk pattypan]$ [K[os@klunk pattypan]$ q«d
