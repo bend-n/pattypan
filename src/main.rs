@@ -34,7 +34,7 @@ fn spawn(shell: &str) -> Result<OwnedFd> {
     match x {
         ForkptyResult::Child => {
             let sh =
-                Command::new(shell).env("TERM", "vt100").spawn()?.wait();
+                Command::new(shell).env("TERM", "xterm").spawn()?.wait();
             // std::thread::sleep(Duration::from_millis(5000));
             // exit(0);
 
@@ -183,6 +183,7 @@ fn main() -> Result<()> {
     dbg!(rows, cols);
     let mut t = Terminal {
         style: Default::default(),
+        saved_cursor: (1, 1),
         cursor: (1, 1),
         size: (cols, rows),
         row: 0,

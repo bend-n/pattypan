@@ -7,6 +7,7 @@ use ctlfun::{ControlFunction, TerminalInputParser};
 pub struct Terminal {
     pub style: Style,
     pub cursor: (u16, u16),
+    pub saved_cursor: (u16, u16),
     pub size: (u16, u16),
 
     pub cells: Vec<Cell>,
@@ -43,6 +44,12 @@ pub struct Cell {
 }
 
 impl Terminal {
+    fn decsc(&mut self) {
+        self.saved_cursor = self.cursor;
+    }
+    fn decrc(&mut self) {
+        self.cursor = self.saved_cursor;
+    }
     #[implicit_fn::implicit_fn]
     pub fn rx(&mut self, x: u8) {
         match self.p.parse_byte(x) {
@@ -192,6 +199,37 @@ impl Terminal {
             }) => {
                 self.cursor.1 += 1;
             }
+            Control(
+                ControlFunction {
+                    start: b'\x1b',
+                    params: [],
+                    end: b'7',
+                    ..
+                }
+                | ControlFunction {
+                    start: b'[',
+                    end: b's',
+                    ..
+                },
+            ) => {
+                self.decsc();
+            }
+            Control(
+                ControlFunction {
+                    start: b'\x1b',
+                    params: [],
+                    end: b'8',
+                    ..
+                }
+                | ControlFunction {
+                    start: b'[',
+                    end: b'u',
+                    ..
+                },
+            ) => {
+                self.decrc();
+            }
+
             Control(ControlFunction {
                 start: b'\x1b',
                 params: [],
