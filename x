@@ -1,1 +1,0 @@
-]0;os@klunk:~/pattypan[?2004h[os@klunk pattypan]$ [K[os@klunk pattypan]$ q«d

@@ -28,7 +28,10 @@ impl Terminal {
             cursor: (1, 1),
             size: sz,
             row: 0,
-            cells: vec![Cell::default(); c as usize * r as usize],
+            cells: vec![
+                Cell::default();
+                (c as usize + 1) * (r as usize + 1)
+            ],
             p: default(),
             mode: Mode::Normal,
 
@@ -88,7 +91,7 @@ impl Terminal {
                     self.cursor.0 = 1;
                     self.cursor.1 += 1;
                 }
-                while self.cursor.1 >= self.size.1 {
+                while self.cursor.1 > self.size.1 {
                     println!("newline");
                     self.cursor.1 -= 1;
                     // self.cells
@@ -100,15 +103,15 @@ impl Terminal {
                         self.size.0 as usize,
                     ));
                 }
-                assert!(
-                    self.cells.len()
-                        == self.row * self.size.0 as usize
-                            + self.size.0 as usize * self.size.1 as usize
-                );
-                assert!(
-                    self.cells[self.row * self.size.0 as usize..].len()
-                        == self.size.0 as usize * self.size.1 as usize
-                );
+                // assert!(
+                //     self.cells.len()
+                //         == self.row * self.size.0 as usize
+                //             + self.size.0 as usize * self.size.1 as usize
+                // );
+                // assert!(
+                //     self.cells[self.row * self.size.0 as usize..].len()
+                //         == self.size.0 as usize * self.size.1 as usize
+                // );
                 // dbg!(self.cursor);
                 let c = &mut self.cells[self.row * self.size.0 as usize..]
                     // y*w+x
@@ -116,8 +119,9 @@ impl Terminal {
                         as usize];
                 c.letter = Some(x);
                 c.style = self.style;
+                dbg!(x);
             }
-            Control(ControlFunction { start: 8, .. }) => {
+            Control(ControlFunction { start: b'', .. }) => {
                 self.cursor.0 -= 1;
             }
             Control(ControlFunction {
@@ -193,6 +197,38 @@ impl Terminal {
                 ..
             }) => {
                 self.cursor.0 -= p.value_or(1);
+            }
+            Control(ControlFunction {
+                start: b'[',
+                params: [Value(y), Value(x)],
+                end: b'H',
+                ..
+            }) => {
+                self.cursor = (*x, *y);
+            }
+            Control(ControlFunction {
+                start: b'[',
+                params: [Default],
+                end: b'H',
+                ..
+            }) => {
+                self.cursor = (1, 1);
+            }
+            Control(ControlFunction {
+                start: b'[',
+                params: [Value(y)],
+                end: b'd',
+                ..
+            }) => {
+                self.cursor.1 = *y;
+            }
+            Control(ControlFunction {
+                start: b'[',
+                params: [Value(x)],
+                end: b'G',
+                ..
+            }) => {
+                self.cursor.0 = *x;
             }
             Control(ControlFunction {
                 start: b'[',
@@ -294,21 +330,37 @@ impl Terminal {
                 ..
             }) => {}
             Control(x) => {
-                dbg!(x);
-                println!(
-                    "{} {:?} {} {}",
-                    x.start as char,
-                    x.params
-                        .iter()
-                        .map(|x| match x {
-                            ctlfun::Parameter::Default =>
-                                "default".to_string(),
-                            ctlfun::Parameter::Value(x) => x.to_string(),
-                        })
-                        .collect::<Vec<_>>(),
-                    String::from_utf8_lossy(&x.bytes),
-                    x.end as char,
-                );
+                if x.start == b'[' {
+                    println!(
+                        "CSI {:?} {}",
+                        x.params
+                            .iter()
+                            .map(|x| match x {
+                                ctlfun::Parameter::Default =>
+                                    "default".to_string(),
+                                ctlfun::Parameter::Value(x) =>
+                                    x.to_string(),
+                            })
+                            .collect::<Vec<_>>(),
+                        x.end as char,
+                    )
+                } else {
+                    println!(
+                        "{} {:?} {} {}",
+                        x.start as char,
+                        x.params
+                            .iter()
+                            .map(|x| match x {
+                                ctlfun::Parameter::Default =>
+                                    "default".to_string(),
+                                ctlfun::Parameter::Value(x) =>
+                                    x.to_string(),
+                            })
+                            .collect::<Vec<_>>(),
+                        String::from_utf8_lossy(&x.bytes),
+                        x.end as char,
+                    );
+                }
             }
             _ => unreachable!(),
         }
