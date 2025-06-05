@@ -281,6 +281,21 @@ impl Terminal {
                 self.grow(x as _);
             }
             Control(ControlFunction {
+                start: b'[',
+                params: [x],
+                end: b'X',
+                ..
+            }) => {
+                let x = x.value_or(1);
+                for cell in &mut self.cells
+                    [self.row * self.size.0 as usize..][..x as usize]
+                {
+                    *cell = Cell::default();
+                }
+                self.grow(x as _);
+            }
+
+            Control(ControlFunction {
                 start: b'\r',
                 params: [],
                 ..
