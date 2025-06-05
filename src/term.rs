@@ -121,15 +121,19 @@ impl Terminal {
                 c.style = self.style;
                 dbg!(x);
             }
-            Control(ControlFunction { start: b'', .. }) => {
+            Control(ControlFunction {
+                start: b'',
+                params: [],
+                ..
+            }) => {
                 self.cursor.0 -= 1;
             }
             Control(ControlFunction {
                 start: b'[',
-                params,
+                params: [],
                 end: b'm',
                 ..
-            }) if params.is_empty() => {
+            }) => {
                 self.style = Style::default();
             }
             Control(ControlFunction {
@@ -232,18 +236,10 @@ impl Terminal {
             }
             Control(ControlFunction {
                 start: b'[',
-                end: b'H',
-                ..
-            }) => {
-                //home
-                self.cursor.0 = 1
-            }
-            Control(ControlFunction {
-                start: b'[',
-                params,
+                params: [Default],
                 end: b'K',
                 ..
-            }) if params == &[Default] => {
+            }) => {
                 for cell in &mut self.cells
                     [self.row * self.size.0 as usize..]
                     [(self.cursor.1 * self.size.0 + self.cursor.0 + 1)
@@ -279,6 +275,7 @@ impl Terminal {
                 }
                 | ControlFunction {
                     start: b'[',
+                    params: [],
                     end: b's',
                     ..
                 },
@@ -294,6 +291,7 @@ impl Terminal {
                 }
                 | ControlFunction {
                     start: b'[',
+                    params: [],
                     end: b'u',
                     ..
                 },
