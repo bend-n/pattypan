@@ -78,7 +78,8 @@ impl Terminal {
         self.cursor = self.saved_cursor;
     }
     fn clear(&mut self) {
-        // TODO
+        self.cells[self.row * self.size.0 as usize..]
+            .fill(Cell::default());
     }
     #[implicit_fn::implicit_fn]
     pub fn rx(&mut self, x: u8) {
@@ -229,6 +230,29 @@ impl Terminal {
             }
             Control(ControlFunction {
                 start: b'[',
+                params: [x],
+                end: b'J',
+                ..
+            }) => {
+                for row in match x.value_or(0) {
+                    0 => self.cursor.1 + 1..self.size.1,
+                    1 => 0..self.cursor.1,
+                    2 => 0..self.size.1,
+                    3 => 0..0,
+                    _ => unreachable!(),
+                } {
+                    for cell in self.cells
+                        [self.row * self.size.0 as usize..]
+                        [row as usize * self.size.0 as usize..]
+                        .iter_mut()
+                        .take(self.size.0 as _)
+                    {
+                        *cell = Cell::default();
+                    }
+                }
+            }
+            Control(ControlFunction {
+                start: b'[',
                 params: [Default],
                 end: b'K',
                 ..
@@ -239,10 +263,8 @@ impl Terminal {
                         as usize
                         ..(self.cursor.1 * self.size.0 + self.size.0)
                             as usize]
-                // [self.cursor.1 as usize..self.size.0 as usize]
-                // [self.cursor.0 as usize..]
                 {
-                    cell.letter = None;
+                    *cell = Cell::default();
                 }
             }
             Control(ControlFunction {
