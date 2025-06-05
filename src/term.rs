@@ -222,14 +222,14 @@ impl Terminal {
             }
             Control(ControlFunction {
                 start: b'\r',
-                // params: [],
+                params: [],
                 ..
             }) => {
                 self.cursor.0 = 1;
             }
             Control(ControlFunction {
                 start: b'\n',
-                // params: [],
+                params: [],
                 ..
             }) => {
                 self.cursor.1 += 1;
