@@ -26,7 +26,7 @@ impl Terminal {
             style: default(),
             saved_cursor: (1, 1),
             cursor: (1, 1),
-            size: sz,
+            size: (c + 1, r + 1),
             row: 0,
             cells: vec![
                 Cell::default();
@@ -85,7 +85,7 @@ impl Terminal {
         self.row += by;
         self.cells.extend(repeat_n(
             Cell::default(),
-            (by * (self.size.0 + 1) as usize) as usize,
+            (by * (self.size.0) as usize) as usize,
         ));
     }
     #[implicit_fn::implicit_fn]
@@ -94,21 +94,21 @@ impl Terminal {
             Continue => {}
             Char(x) => {
                 self.cursor.0 += 1;
-                if self.cursor.0 == self.size.0 + 1 {
+                if self.cursor.0 == self.size.0 {
                     println!("overflow");
                     self.cursor.0 = 1;
                     self.cursor.1 += 1;
                 }
-                while self.cursor.1 > self.size.1 {
+                while self.cursor.1 >= self.size.1 {
                     println!("newline");
                     self.cursor.1 -= 1;
                     self.grow(1);
                 }
                 assert!(
                     self.cells.len()
-                        == self.row * (self.size.0 as usize + 1)
-                            + (self.size.0 as usize + 1)
-                                * (self.size.1 as usize + 1)
+                        == self.row * (self.size.0 as usize)
+                            + (self.size.0 as usize)
+                                * (self.size.1 as usize)
                 );
                 // assert!(
                 //     self.cells[self.row * self.size.0 as usize..].len()
@@ -263,8 +263,7 @@ impl Terminal {
             }) => {
                 for cell in &mut self.cells
                     [self.row * self.size.0 as usize..]
-                    [(self.cursor.1 * self.size.0 + self.cursor.0 + 1)
-                        as usize
+                    [(self.cursor.1 * self.size.0 + self.cursor.0) as usize
                         ..(self.cursor.1 * self.size.0 + self.size.0)
                             as usize]
                 {
