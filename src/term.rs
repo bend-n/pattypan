@@ -86,7 +86,7 @@ impl Terminal {
             Continue => {}
             Char(x) => {
                 self.cursor.0 += 1;
-                if self.cursor.0 == self.size.0 {
+                if self.cursor.0 == self.size.0 + 1 {
                     println!("overflow");
                     self.cursor.0 = 1;
                     self.cursor.1 += 1;
@@ -94,9 +94,6 @@ impl Terminal {
                 while self.cursor.1 > self.size.1 {
                     println!("newline");
                     self.cursor.1 -= 1;
-                    // self.cells
-                    //     .drain(..self.size.0 as usize)
-                    //     .for_each(drop);
                     self.row += 1;
                     self.cells.extend(repeat_n(
                         Cell::default(),

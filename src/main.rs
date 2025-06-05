@@ -120,6 +120,7 @@ fn main() -> Result<()> {
                     continue;
                 }
                 Enter => &b"\n"[..],
+                Escape => b"\x1b",
                 Up => b"\x1b[A",
                 Down => b"\x1b[B",
                 Right => b"\x1b[C",
