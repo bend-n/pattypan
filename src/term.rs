@@ -81,6 +81,13 @@ impl Terminal {
         self.cells[self.row * self.size.0 as usize..]
             .fill(Cell::default());
     }
+    fn grow(&mut self, by: usize) {
+        self.row += by;
+        self.cells.extend(repeat_n(
+            Cell::default(),
+            (by * (self.size.0 + 1) as usize) as usize,
+        ));
+    }
     #[implicit_fn::implicit_fn]
     pub fn rx(&mut self, x: u8) {
         match self.p.parse_byte(x) {
@@ -95,17 +102,14 @@ impl Terminal {
                 while self.cursor.1 > self.size.1 {
                     println!("newline");
                     self.cursor.1 -= 1;
-                    self.row += 1;
-                    self.cells.extend(repeat_n(
-                        Cell::default(),
-                        self.size.0 as usize,
-                    ));
+                    self.grow(1);
                 }
-                // assert!(
-                //     self.cells.len()
-                //         == self.row * self.size.0 as usize
-                //             + self.size.0 as usize * self.size.1 as usize
-                // );
+                assert!(
+                    self.cells.len()
+                        == self.row * (self.size.0 as usize + 1)
+                            + (self.size.0 as usize + 1)
+                                * (self.size.1 as usize + 1)
+                );
                 // assert!(
                 //     self.cells[self.row * self.size.0 as usize..].len()
                 //         == self.size.0 as usize * self.size.1 as usize
@@ -266,6 +270,15 @@ impl Terminal {
                 {
                     *cell = Cell::default();
                 }
+            }
+            Control(ControlFunction {
+                start: b'[',
+                params: [x],
+                end: b'M',
+                ..
+            }) => {
+                let x = x.value_or(1);
+                self.grow(x as _);
             }
             Control(ControlFunction {
                 start: b'\r',
