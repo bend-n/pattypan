@@ -156,13 +156,9 @@ impl Terminal {
                         ModeSet(2) => self.style.flags |= DIM,
                         ModeSet(3) => self.style.flags |= ITALIC,
                         ModeSet(4) => self.style.flags |= UNDERLINE,
-                        ModeSet(7) => std::mem::swap(
-                            &mut self.style.bg,
-                            &mut self.style.color,
-                        ),
+                        ModeSet(7) => self.style.flags |= INVERT,
                         ModeSet(9) => self.style.flags |= STRIKETHROUGH,
                         ModeSet(22) => self.style.flags &= !(BOLD | DIM),
-
                         _ => {}
                     }
                 }
@@ -371,8 +367,9 @@ enum StyleAction {
 pub const BOLD: u8 = 1;
 pub const DIM: u8 = 1 << 1;
 pub const ITALIC: u8 = 1 << 2;
-pub const UNDERLINE: u8 = 1 << 3;
-pub const STRIKETHROUGH: u8 = 1 << 4;
+pub const INVERT: u8 = 1 << 3;
+pub const UNDERLINE: u8 = 1 << 4;
+pub const STRIKETHROUGH: u8 = 1 << 5;
 
 fn value<'a>(
     r: impl std::ops::RangeBounds<u16>,

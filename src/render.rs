@@ -22,7 +22,10 @@ pub fn render(
         .zip(0..)
         .skip(1)
     {
-        for (cell, j) in col.iter().skip(2).zip(0..) {
+        for (&(mut cell), j) in col.iter().skip(2).zip(0..) {
+            if cell.style.flags & crate::term::INVERT != 0 {
+                std::mem::swap(&mut cell.style.bg, &mut cell.style.color);
+            }
             if cell.style.bg != colors::BACKGROUND {
                 let cell = Image::<_, 4>::build(
                     sz.ceil() as u32,

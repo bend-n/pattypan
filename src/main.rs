@@ -36,9 +36,6 @@ fn spawn(shell: &str) -> Result<OwnedFd> {
         ForkptyResult::Child => {
             let sh =
                 Command::new(shell).env("TERM", "xterm").spawn()?.wait();
-            // std::thread::sleep(Duration::from_millis(5000));
-            // exit(0);
-
             exit(0);
         }
         ForkptyResult::Parent { child, master } => {
@@ -105,10 +102,14 @@ fn main() -> Result<()> {
     std::thread::spawn(move || {
         use Key::*;
         let mut shifting = false;
+        let mut ctrl = false;
         while let Ok((k, s)) = krx.recv() {
             if !s {
                 if k == LeftShift || k == RightShift {
                     shifting = false;
+                }
+                if k == LeftCtrl || k == RightCtrl {
+                    ctrl = false;
                 }
                 continue;
             }
@@ -117,6 +118,10 @@ fn main() -> Result<()> {
                 LeftSuper | RightSuper => continue,
                 LeftShift | RightShift => {
                     shifting = true;
+                    continue;
+                }
+                LeftCtrl | RightCtrl => {
+                    ctrl = true;
                     continue;
                 }
                 Enter => &b"\n"[..],
@@ -156,6 +161,7 @@ fn main() -> Result<()> {
 
                 Key0 | Key1 | Key2 | Key3 | Key4 | Key5 | Key6 | Key7
                 | Key8 | Key9 => &[k as u8 + b'0'],
+                _ if ctrl => &[k as u8 - 9],
                 _ if shifting => &[k as u8 - 10 + b'A'],
                 _ => &[k as u8 - 10 + b'a'],
             };
