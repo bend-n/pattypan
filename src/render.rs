@@ -164,13 +164,13 @@ fn t() {
         FontRef::from_index(&include_bytes!("../cjk.ttc")[..], 0).unwrap();
 
     dbg!(f.attributes());
-    let m = f.metrics(&[f.charmap().map('行') as _]);
+    // let m = f.metrics(&[f.charmap().map('行') as _]);
 
     let ppem = 30.0;
     let d = dims(&FONT, ppem);
     let sz = d.0;
     let mut grid = Image::<_, 4>::alloc(2000, 500);
-    unsafe { grid.chunked_mut().for_each(|x| *x = [0, 0, 0, 255]) };
+    grid.chunked_mut().for_each(|x| *x = [0, 0, 0, 255]);
     for (letter, i) in "素早い茶色のキツネは怠け者の犬を飛び越えた"
         .chars()
         .zip(0..)

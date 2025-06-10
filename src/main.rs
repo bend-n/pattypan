@@ -1,4 +1,5 @@
 #![feature(
+    const_trait_impl,
     generic_assert,
     deadline_api,
     deref_patterns,
@@ -7,6 +8,7 @@
     if_let_guard,
     import_trait_associated_functions
 )]
+#![allow(incomplete_features)]
 use std::fs::File;
 use std::io::Write;
 use std::iter::successors;
@@ -14,12 +16,11 @@ use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
 use std::process::{Command, exit};
 use std::sync::mpsc;
 use std::thread::sleep;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 pub mod colors;
 
 use anyhow::Result;
-use ctlfun::TerminalInputParser;
 use fimg::Image;
 use minifb::{InputCallback, Key, WindowOptions};
 use nix::pty::{ForkptyResult, forkpty};
@@ -36,8 +37,7 @@ fn spawn(shell: &str) -> Result<(OwnedFd, Pid)> {
     let x = unsafe { forkpty(None, None)? };
     match x {
         ForkptyResult::Child => {
-            let sh =
-                Command::new(shell).env("TERM", "xterm").spawn()?.wait();
+            _ = Command::new(shell).env("TERM", "xterm").spawn()?.wait();
             exit(0);
         }
         ForkptyResult::Parent { child, master } => {
@@ -73,10 +73,6 @@ impl InputCallback for KeyPress {
     fn set_key_state(&mut self, key: Key, state: bool) {
         self.0.send((key, state)).unwrap();
     }
-}
-enum Event {
-    Read(Vec<u8>),
-    Write(Key),
 }
 fn main() -> Result<()> {
     let mut w = minifb::Window::new(
@@ -185,14 +181,15 @@ fn main() -> Result<()> {
                 // println!("recv");
                 ttx.send(x).unwrap();
             }
-            sleep(Duration::from_millis(10))
+            sleep(Duration::from_millis(10));
         }
     });
     std::thread::spawn(move || {
         loop {
-            match waitpid(pid, None).unwrap() {
-                nix::sys::wait::WaitStatus::Exited(..) => exit(0),
-                _ => (),
+            if let nix::sys::wait::WaitStatus::Exited(..) =
+                waitpid(pid, None).unwrap()
+            {
+                exit(0)
             }
         }
     });
@@ -232,13 +229,12 @@ fn main() -> Result<()> {
         let x = Image::<Box<[u32]>, 1>::from(i.as_ref());
         w.update_with_buffer(x.buffer(), w.get_size().0, w.get_size().1)?;
     }
-
-    Ok(())
 }
 #[test]
 
 fn tpaxrse() {
     println!("-------------------");
+    use ctlfun::TerminalInputParser;
     let mut x = TerminalInputParser::new();
     for c in "\x1b[6n".as_bytes() {
         use ctlfun::TerminalInput::*;
