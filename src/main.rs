@@ -23,6 +23,8 @@ use ctlfun::TerminalInputParser;
 use fimg::Image;
 use minifb::{InputCallback, Key, WindowOptions};
 use nix::pty::{ForkptyResult, forkpty};
+use nix::sys::wait::waitpid;
+use nix::unistd::Pid;
 use render::FONT;
 use term::*;
 mod render;
@@ -30,7 +32,7 @@ mod term;
 use libc::{
     F_GETFL, F_SETFL, O_NONBLOCK, TIOCSWINSZ, fcntl, ioctl, winsize,
 };
-fn spawn(shell: &str) -> Result<OwnedFd> {
+fn spawn(shell: &str) -> Result<(OwnedFd, Pid)> {
     let x = unsafe { forkpty(None, None)? };
     match x {
         ForkptyResult::Child => {
@@ -49,7 +51,7 @@ fn spawn(shell: &str) -> Result<OwnedFd> {
                     0
                 )
             };
-            Ok(master)
+            Ok((master, child))
         }
     }
 }
@@ -95,7 +97,7 @@ fn main() -> Result<()> {
     w.set_input_callback(Box::new(KeyPress(ktx)));
     w.update();
 
-    let pty = spawn("bash")?;
+    let (pty, pid) = spawn("bash")?;
     let pty1 = pty.try_clone()?;
     let pty2 = pty.try_clone()?;
 
@@ -184,13 +186,21 @@ fn main() -> Result<()> {
             sleep(Duration::from_millis(10))
         }
     });
+    std::thread::spawn(move || {
+        loop {
+            match waitpid(pid, None).unwrap() {
+                nix::sys::wait::WaitStatus::Exited(..) => exit(0),
+                _ => (),
+            }
+        }
+    });
 
     sleep(Duration::from_millis(100));
     w.update();
     let ppem = 20.0;
     let (fw, fh) = render::dims(&FONT, ppem);
-    let cols = (w.get_size().0 as f32 / fw).floor() as u16 + 1;
-    let rows = (w.get_size().1 as f32 / fh).floor() as u16;
+    let cols = (w.get_size().0 as f32 / fw).floor() as u16 - 1;
+    let rows = (w.get_size().1 as f32 / fh).floor() as u16 - 1;
     dbg!(rows, cols);
     let mut t = Terminal::new((cols, rows), false);
     unsafe {
@@ -216,7 +226,7 @@ fn main() -> Result<()> {
                 t.rx(char);
             }
         }
-        let i = render::render(&t, w.get_size(), ppem);
+        let i = render::render(&mut t, w.get_size(), ppem);
         let x = Image::<Box<[u32]>, 1>::from(i.as_ref());
         w.update_with_buffer(x.buffer(), w.get_size().0, w.get_size().1)?;
     }

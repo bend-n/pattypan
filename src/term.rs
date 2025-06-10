@@ -1,6 +1,7 @@
 use std::iter::repeat_n;
 use std::ops::Not;
-
+mod cells;
+use cells::*;
 use ctlfun::Parameter::*;
 use ctlfun::TerminalInput::*;
 use ctlfun::{ControlFunction, TerminalInputParser};
@@ -9,10 +10,8 @@ pub struct Terminal {
     pub style: Style,
     pub cursor: (u16, u16),
     pub saved_cursor: (u16, u16),
-    pub size: (u16, u16),
 
-    pub cells: Vec<Cell>,
-    pub row: usize,
+    pub cells: Cells,
     pub p: TerminalInputParser,
     pub mode: Mode,
 
@@ -21,17 +20,12 @@ pub struct Terminal {
 
 use std::default::Default::default;
 impl Terminal {
-    pub fn new(sz @ (c, r): (u16, u16), alt: bool) -> Self {
+    pub fn new(sz: (u16, u16), alt: bool) -> Self {
         Self {
             style: default(),
             saved_cursor: (1, 1),
             cursor: (1, 1),
-            size: (c + 1, r + 1),
-            row: 0,
-            cells: vec![
-                Cell::default();
-                (c as usize + 1) * (r as usize + 1)
-            ],
+            cells: Cells::new(sz),
             p: default(),
             mode: Mode::Normal,
 
@@ -47,29 +41,6 @@ pub enum Mode {
     Raw,
 }
 
-#[derive(Clone, Copy)]
-pub struct Style {
-    pub bg: [u8; 3],
-    pub color: [u8; 3],
-    pub flags: u8,
-}
-use crate::colors;
-impl std::default::Default for Style {
-    fn default() -> Self {
-        Self {
-            bg: colors::BACKGROUND,
-            flags: 0,
-            color: colors::FOREGROUND,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Default)]
-pub struct Cell {
-    pub style: Style,
-    pub letter: Option<char>,
-}
-
 impl Terminal {
     fn decsc(&mut self) {
         self.saved_cursor = self.cursor;
@@ -78,15 +49,7 @@ impl Terminal {
         self.cursor = self.saved_cursor;
     }
     fn clear(&mut self) {
-        self.cells[self.row * self.size.0 as usize..]
-            .fill(Cell::default());
-    }
-    fn grow(&mut self, by: usize) {
-        self.row += by;
-        self.cells.extend(repeat_n(
-            Cell::default(),
-            (by * (self.size.0) as usize) as usize,
-        ));
+        self.cells.cells().fill(Cell::default());
     }
     #[implicit_fn::implicit_fn]
     pub fn rx(&mut self, x: u8) {
@@ -94,34 +57,25 @@ impl Terminal {
             Continue => {}
             Char(x) => {
                 self.cursor.0 += 1;
-                if self.cursor.0 == self.size.0 {
+                if self.cursor.0 >= self.cells.c() {
                     println!("overflow");
                     self.cursor.0 = 1;
                     self.cursor.1 += 1;
                 }
-                while self.cursor.1 >= self.size.1 {
+                while self.cursor.1 >= self.cells.r() {
                     println!("newline");
                     self.cursor.1 -= 1;
-                    self.grow(1);
+                    self.cells.grow(1);
                 }
-                assert!(
-                    self.cells.len()
-                        == self.row * (self.size.0 as usize)
-                            + (self.size.0 as usize)
-                                * (self.size.1 as usize)
-                );
-                // assert!(
-                //     self.cells[self.row * self.size.0 as usize..].len()
-                //         == self.size.0 as usize * self.size.1 as usize
-                // );
-                // dbg!(self.cursor);
-                let c = &mut self.cells[self.row * self.size.0 as usize..]
-                    // y*w+x
-                    [(self.cursor.1 * self.size.0 + self.cursor.0)
-                        as usize];
+                let w = self.cells.c();
+                let c = self.cells.get_at(self.cursor);
                 c.letter = Some(x);
                 c.style = self.style;
-                dbg!(x);
+                eprintln!(
+                    "@ {} (mx {w}) c={}",
+                    self.cursor.0,
+                    c.letter.unwrap()
+                );
             }
             Control(ControlFunction {
                 start: b'',
@@ -239,18 +193,13 @@ impl Terminal {
                 ..
             }) => {
                 for row in match x.value_or(0) {
-                    0 => self.cursor.1 + 1..self.size.1,
-                    1 => 0..self.cursor.1,
-                    2 => 0..self.size.1,
+                    0 => self.cursor.1 + 1..self.cells.r(),
+                    1 => 1..self.cursor.1,
+                    2 => 1..self.cells.r(),
                     3 => 0..0,
                     _ => unreachable!(),
                 } {
-                    for cell in self.cells
-                        [self.row * self.size.0 as usize..]
-                        [row as usize * self.size.0 as usize..]
-                        .iter_mut()
-                        .take(self.size.0 as _)
-                    {
+                    for cell in self.cells.row(row) {
                         *cell = Cell::default();
                     }
                 }
@@ -261,12 +210,7 @@ impl Terminal {
                 end: b'K',
                 ..
             }) => {
-                for cell in &mut self.cells
-                    [self.row * self.size.0 as usize..]
-                    [(self.cursor.1 * self.size.0 + self.cursor.0) as usize
-                        ..(self.cursor.1 * self.size.0 + self.size.0)
-                            as usize]
-                {
+                for cell in self.cells.past(self.cursor) {
                     *cell = Cell::default();
                 }
             }
@@ -277,7 +221,7 @@ impl Terminal {
                 ..
             }) => {
                 let x = x.value_or(1);
-                self.grow(x as _);
+                self.cells.grow(x as _);
             }
             Control(ControlFunction {
                 start: b'[',
@@ -286,12 +230,11 @@ impl Terminal {
                 ..
             }) => {
                 let x = x.value_or(1);
-                for cell in &mut self.cells
-                    [self.row * self.size.0 as usize..][..x as usize]
+                for cell in
+                    self.cells.row(self.cursor.1).iter_mut().take(x as _)
                 {
                     *cell = Cell::default();
                 }
-                self.grow(x as _);
             }
 
             Control(ControlFunction {
@@ -426,6 +369,8 @@ fn value<'a>(
     any().filter(move |x| r.contains(x))
 }
 use chumsky::prelude::*;
+
+use crate::colors;
 #[implicit_fn::implicit_fn]
 fn parse_sgr<'a>() -> impl Parser<'a, &'a [u16], Vec<StyleAction>> {
     use StyleAction::*;
