@@ -50,7 +50,7 @@ impl Terminal {
         self.cursor = self.saved_cursor;
     }
     fn clear(&mut self) {
-        self.cells.cells().fill(Cell::default());
+        self.cells.cells().fill(default());
     }
     #[implicit_fn::implicit_fn]
     pub fn rx(&mut self, x: u8, pty: BorrowedFd<'_>) {
@@ -200,9 +200,7 @@ impl Terminal {
                     3 => 0..0,
                     _ => unreachable!(),
                 } {
-                    for cell in self.cells.row(row) {
-                        *cell = Cell::default();
-                    }
+                    self.cells.row(row).fill(default());
                 }
             }
             Control(ControlFunction {
@@ -211,9 +209,7 @@ impl Terminal {
                 end: b'K',
                 ..
             }) => {
-                for cell in self.cells.past(self.cursor) {
-                    *cell = Cell::default();
-                }
+                self.cells.past(self.cursor).fill(default());
             }
             Control(ControlFunction {
                 start: b'[',
@@ -247,7 +243,7 @@ impl Terminal {
                 for cell in
                     self.cells.row(self.cursor.1).iter_mut().take(x as _)
                 {
-                    *cell = Cell::default();
+                    *cell = default();
                 }
             }
 
