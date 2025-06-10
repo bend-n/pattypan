@@ -18,7 +18,7 @@ pub fn render(
     let sz = ppem * (m.max_width / m.units_per_em as f32);
     let mut i = Image::build(w as _, h as _).fill(colors::BACKGROUND);
     for (col, k) in x.cells.rows().zip(1..) {
-        for (&(mut cell), j) in col.iter().zip(1..) {
+        for (&(mut cell), j) in col.iter().zip(0..) {
             if cell.style.flags & crate::term::INVERT != 0 {
                 std::mem::swap(&mut cell.style.bg, &mut cell.style.color);
             }
@@ -119,7 +119,7 @@ pub fn render(
     unsafe {
         i.as_mut().overlay_at(
             &cell,
-            4 + ((x.cursor.0 + 1) as f32 * sz) as u32,
+            4 + ((x.cursor.0) as f32 * sz) as u32,
             (x.cursor.1 as f32 * (ppem * 1.25)) as u32 - 20,
         )
     };
