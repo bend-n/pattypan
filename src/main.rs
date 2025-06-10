@@ -223,7 +223,7 @@ fn main() -> Result<()> {
         while let Ok(x) = trx.recv_timeout(Duration::from_millis(16)) {
             f.write_all(&x)?;
             for char in x {
-                t.rx(char);
+                t.rx(char, pty.as_fd());
             }
         }
         let i = render::render(&mut t, w.get_size(), ppem);
@@ -238,7 +238,7 @@ fn main() -> Result<()> {
 fn tpaxrse() {
     println!("-------------------");
     let mut x = TerminalInputParser::new();
-    for c in "\x1b[?1049h".as_bytes() {
+    for c in "\x1b[6n".as_bytes() {
         use ctlfun::TerminalInput::*;
         match x.parse_byte(*c) {
             Char(x) => {

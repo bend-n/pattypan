@@ -1,5 +1,6 @@
 use std::iter::repeat_n;
 use std::ops::Not;
+use std::os::fd::BorrowedFd;
 mod cells;
 use cells::*;
 use ctlfun::Parameter::*;
@@ -52,7 +53,7 @@ impl Terminal {
         self.cells.cells().fill(Cell::default());
     }
     #[implicit_fn::implicit_fn]
-    pub fn rx(&mut self, x: u8) {
+    pub fn rx(&mut self, x: u8, pty: BorrowedFd<'_>) {
         match self.p.parse_byte(x) {
             Continue => {}
             Char(x) => {
@@ -222,6 +223,19 @@ impl Terminal {
             }) => {
                 let x = x.value_or(1);
                 self.cells.grow(x as _);
+            }
+            Control(ControlFunction {
+                start: b'[',
+                params: [Value(6)],
+                end: b'n',
+                ..
+            }) => {
+                super::write(
+                    pty,
+                    format!("\x1b[{};{}R", self.cells.r(), self.cells.c())
+                        .as_bytes(),
+                )
+                .unwrap();
             }
             Control(ControlFunction {
                 start: b'[',
