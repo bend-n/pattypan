@@ -74,7 +74,7 @@ impl Cells {
             [(row as usize - 1) * w as usize..row as usize * w as usize]
     }
     pub fn past(&mut self, (x, row): (u16, u16)) -> &mut [Cell] {
-        &mut self.rows().nth(row as usize - 1).unwrap()[x as usize - 1..]
+        &mut self.rows().nth(row as usize - 1).unwrap()[x as usize..]
     }
     pub fn grow(&mut self, by: u16) {
         self.row += by;
