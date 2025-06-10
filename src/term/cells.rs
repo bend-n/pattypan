@@ -10,7 +10,8 @@ pub struct Style {
     pub color: [u8; 3],
     pub flags: u8,
 }
-use std::iter::repeat_n;
+use std::default::Default::default;
+use std::iter::{repeat, repeat_n};
 
 use crate::colors;
 impl std::default::Default for Style {
@@ -40,17 +41,16 @@ impl Cells {
             row: 0,
         }
     }
+    fn offset(&mut self) -> usize {
+        self.row as usize * self.size.0 as usize
+    }
     pub fn cells(&mut self) -> &mut [Cell] {
+        let o = self.offset();
         assert!(
             self.cells.len()
-                == self.row as usize * (self.size.0 as usize)
-                    + (self.size.0 as usize) * (self.size.1 as usize)
+                == o + (self.size.0 as usize) * (self.size.1 as usize)
         );
-        assert!(
-            self.cells[self.row as usize * self.size.0 as usize..].len()
-                == self.size.0 as usize * self.size.1 as usize
-        );
-        &mut self.cells[self.row as usize * self.size.0 as usize..]
+        &mut self.cells[o..]
     }
     pub fn r(&mut self) -> u16 {
         self.size.1
@@ -82,5 +82,20 @@ impl Cells {
             Cell::default(),
             by as usize * (self.size.0) as usize,
         ));
+    }
+
+    pub fn insert_lines(&mut self, lines: u16, below: u16) {
+        let c = self.c();
+        let o = self.offset();
+        let next_row = o + (c * (below - 1)) as usize;
+        self.cells
+            .splice(
+                next_row..next_row,
+                repeat_n(default(), (lines * c) as usize),
+            )
+            .for_each(drop);
+        self.cells
+            .drain(o + self.size.0 as usize * self.size.1 as usize..)
+            .for_each(drop);
     }
 }

@@ -221,6 +221,15 @@ impl Terminal {
             }
             Control(ControlFunction {
                 start: b'[',
+                params: [x],
+                end: b'L',
+                ..
+            }) => {
+                let x = x.value_or(1);
+                self.cells.insert_lines(x as _, self.cursor.1);
+            }
+            Control(ControlFunction {
+                start: b'[',
                 params: [Value(6)],
                 end: b'n',
                 ..
