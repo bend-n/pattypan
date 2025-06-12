@@ -136,6 +136,7 @@ fn main() -> Result<()> {
                 Period => b".",
                 Slash if shifting => b"?",
                 Slash => b"/",
+                Backslash if shifting => b"|",
                 Backslash => b"\\",
                 Backspace => b"",
                 Equal if shifting => b"+",
@@ -194,8 +195,10 @@ fn main() -> Result<()> {
         }
     });
 
-    sleep(Duration::from_millis(100));
-    w.update();
+    while w.get_size().0 < 20 || w.get_size().0 > 5000 {
+        sleep(Duration::from_millis(10));
+        w.update();
+    }
     let ppem = 20.0;
     let (fw, fh) = render::dims(&FONT, ppem);
     let cols = (w.get_size().0 as f32 / fw).floor() as u16 - 1;

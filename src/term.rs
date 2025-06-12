@@ -243,6 +243,15 @@ impl Terminal {
             }
             Control(ControlFunction {
                 start: b'[',
+                params: [p],
+                end: b'@',
+                ..
+            }) => {
+                let count = p.value_or(1);
+                self.cells.insert_chars(count, self.cursor);
+            }
+            Control(ControlFunction {
+                start: b'[',
                 params: [x],
                 end: b'X',
                 ..

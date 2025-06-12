@@ -11,7 +11,7 @@ pub struct Style {
     pub flags: u8,
 }
 use std::default::Default::default;
-use std::iter::{repeat, repeat_n};
+use std::iter::{empty, repeat, repeat_n};
 
 use crate::colors;
 impl std::default::Default for Style {
@@ -57,10 +57,14 @@ impl Cells {
         self.size.0
     }
     #[track_caller]
+    fn at(&mut self, (x, y): (u16, u16)) -> usize {
+        self.offset() + ((y - 1) * self.c() + x - 1) as usize
+    }
+    #[track_caller]
     pub fn get_at(&mut self, (x, y): (u16, u16)) -> &mut Cell {
-        let w = self.c();
         assert!(x < self.c() && y < self.r(), "out of bounds");
-        &mut self.cells()[((y - 1) * w + x - 1) as usize]
+        let i = self.at((x, y));
+        &mut self.cells[i]
     }
     pub fn rows(&mut self) -> impl Iterator<Item = &mut [Cell]> {
         let w = self.c();
@@ -72,7 +76,7 @@ impl Cells {
             [(row as usize - 1) * w as usize..row as usize * w as usize]
     }
     pub fn past(&mut self, (x, row): (u16, u16)) -> &mut [Cell] {
-        &mut self.rows().nth(row as usize - 1).unwrap()[x as usize..]
+        &mut self.rows().nth(row as usize - 1).unwrap()[x as usize - 1..]
     }
     pub fn grow(&mut self, by: u16) {
         self.row += by;
@@ -82,6 +86,14 @@ impl Cells {
         ));
     }
 
+    pub fn insert_chars(&mut self, characters: u16, (x, y): (u16, u16)) {
+        let s = &mut self.row(y)[x as usize - 1..];
+        s.rotate_right(characters as usize);
+        s[..characters as usize].fill(Cell::default());
+        let w = self.c();
+        self.row(y)[w as usize - characters as usize..]
+            .fill(Cell::default());
+    }
     pub fn insert_lines(&mut self, lines: u16, below: u16) {
         let c = self.c();
         let o = self.offset();
