@@ -119,7 +119,7 @@ pub fn render(
     unsafe {
         i.as_mut().overlay_at(
             &cell,
-            4 + ((x.cursor.0) as f32 * sz) as u32,
+            4 + ((x.cursor.0 - 1) as f32 * sz) as u32,
             (x.cursor.1 as f32 * (ppem * 1.25)) as u32 - 20,
         )
     };

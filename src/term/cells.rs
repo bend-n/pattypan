@@ -4,7 +4,7 @@ pub struct Cells {
     pub cells: Vec<Cell>,
     pub row: u16,
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Style {
     pub bg: [u8; 3],
     pub color: [u8; 3],
@@ -24,7 +24,7 @@ impl std::default::Default for Style {
     }
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, Debug)]
 pub struct Cell {
     pub style: Style,
     pub letter: Option<char>,
@@ -32,12 +32,10 @@ pub struct Cell {
 
 impl Cells {
     pub fn new((c, r): (u16, u16)) -> Self {
+        let (c, r) = (c + 1, r + 1);
         Self {
-            size: (c + 1, r + 1),
-            cells: vec![
-                Cell::default();
-                (c as usize + 1) * (r as usize + 1)
-            ],
+            size: (c, r),
+            cells: vec![Cell::default(); (c as usize) * (r as usize)],
             row: 0,
         }
     }

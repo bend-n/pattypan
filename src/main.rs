@@ -200,7 +200,7 @@ fn main() -> Result<()> {
     let (fw, fh) = render::dims(&FONT, ppem);
     let cols = (w.get_size().0 as f32 / fw).floor() as u16 - 1;
     let rows = (w.get_size().1 as f32 / fh).floor() as u16 - 1;
-    dbg!(rows, cols);
+    println!("{}x{}", rows, cols);
     let mut t = Terminal::new((cols, rows), false);
     unsafe {
         let x = winsize {
@@ -225,6 +225,7 @@ fn main() -> Result<()> {
                 t.rx(char, pty.as_fd());
             }
         }
+        // dbg!(t.cells.get_at((1, 1)));
         let i = render::render(&mut t, w.get_size(), ppem);
         let x = Image::<Box<[u32]>, 1>::from(i.as_ref());
         w.update_with_buffer(x.buffer(), w.get_size().0, w.get_size().1)?;

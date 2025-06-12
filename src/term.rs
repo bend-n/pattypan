@@ -56,7 +56,6 @@ impl Terminal {
         match self.p.parse_byte(x) {
             Continue => {}
             Char(x) => {
-                self.cursor.0 += 1;
                 if self.cursor.0 >= self.cells.c() {
                     println!("overflow");
                     self.cursor.0 = 1;
@@ -72,10 +71,11 @@ impl Terminal {
                 c.letter = Some(x);
                 c.style = self.style;
                 eprintln!(
-                    "@ {} (mx {w}) c={}",
-                    self.cursor.0,
+                    "@ {:?} (mx {w}) c={}",
+                    self.cursor,
                     c.letter.unwrap()
                 );
+                self.cursor.0 += 1;
             }
             Control(ControlFunction {
                 start: b'',
@@ -236,7 +236,7 @@ impl Terminal {
             }) => {
                 super::write(
                     pty,
-                    format!("\x1b[{};{}R", self.cells.r(), self.cells.c())
+                    format!("\x1b[{};{}R", self.cursor.1, self.cursor.0)
                         .as_bytes(),
                 )
                 .unwrap();
@@ -300,6 +300,14 @@ impl Terminal {
                 },
             ) => {
                 self.decrc();
+            }
+            Control(ControlFunction {
+                start: b'[',
+                params: [y, x],
+                end: b'f',
+                ..
+            }) => {
+                self.cursor = (x.value_or(1) as _, y.value_or(1));
             }
             Control(ControlFunction {
                 start: b'[',
