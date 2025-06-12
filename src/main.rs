@@ -16,7 +16,7 @@ use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
 use std::process::{Command, exit};
 use std::sync::mpsc;
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub mod colors;
 
