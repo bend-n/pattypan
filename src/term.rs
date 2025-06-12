@@ -70,11 +70,11 @@ impl Terminal {
                 let c = self.cells.get_at(self.cursor);
                 c.letter = Some(x);
                 c.style = self.style;
-                eprintln!(
-                    "@ {:?} (mx {w}) c={}",
-                    self.cursor,
-                    c.letter.unwrap()
-                );
+                // eprintln!(
+                //     "@ {:?} (mx {w}) c={}",
+                //     self.cursor,
+                //     c.letter.unwrap()
+                // );
                 self.cursor.0 += 1;
             }
             Control(ControlFunction {

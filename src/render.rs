@@ -90,20 +90,14 @@ pub fn render(
                     if x.placement.width == 0 {
                         continue;
                     }
-
-                    let item = Image::<_, 4>::build(
+                    let item = Image::<_, 1>::build(
                         x.placement.width,
                         x.placement.height,
                     )
-                    .buf(
-                        x.data
-                            .iter()
-                            .flat_map(|&x| color.join(x))
-                            .collect::<Vec<u8>>(),
-                    );
-
-                    i.as_mut().overlay_blended_at(
+                    .buf_unchecked(x.data);
+                    i.as_mut().blend_alpha_and_color_at(
                         &item.as_ref(),
+                        color,
                         4 + ((j as f32 * sz) + x.placement.left as f32)
                             as u32,
                         ((k as f32 * (ppem * 1.25)) as u32)
