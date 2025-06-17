@@ -94,6 +94,14 @@ impl Cells {
         self.row(y)[w as usize - characters as usize..]
             .fill(Cell::default());
     }
+    pub fn delete_chars(&mut self, characters: u16, (x, y): (u16, u16)) {
+        let s = &mut self.row(y)[x as usize - 1..];
+        s.rotate_left(characters as usize);
+        s[..characters as usize].fill(Cell::default());
+        let w = self.c();
+        self.row(y)[w as usize - characters as usize..]
+            .fill(Cell::default());
+    }
     pub fn insert_lines(&mut self, lines: u16, below: u16) {
         let c = self.c();
         let o = self.offset();
