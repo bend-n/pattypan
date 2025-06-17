@@ -259,6 +259,21 @@ impl Terminal {
                 let count = p.value_or(1);
                 self.cells.delete_chars(count, self.cursor);
             }
+            //decstbm
+            Control(ControlFunction {
+                start: b'[',
+                params: v,
+                end: b'r',
+                ..
+            }) => {
+                self.cells.margin = match v {
+                    [t, b] => (t.value_or(1), b.value_or(self.cells.r())),
+                    _ => (1, self.cells.r()),
+                };
+                self.cursor = (1, 1);
+                assert!(self.cells.margin.0 < self.cells.margin.1);
+            }
+
             Control(ControlFunction {
                 start: b'[',
                 params: [x],

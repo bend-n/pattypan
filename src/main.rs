@@ -1,4 +1,5 @@
 #![feature(
+    debug_closure_helpers,
     const_trait_impl,
     generic_assert,
     deadline_api,
