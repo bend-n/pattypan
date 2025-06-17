@@ -127,6 +127,8 @@ fn main() -> Result<()> {
                     continue;
                 }
                 Enter => &b"\n"[..],
+                Delete => b"\x1b[3~",
+                Insert => b"\x1b[2~",
                 Escape => b"\x1b",
                 Up => b"\x1b[A",
                 Down => b"\x1b[B",
