@@ -38,7 +38,10 @@ fn spawn(shell: &str) -> Result<(OwnedFd, Pid)> {
     let x = unsafe { forkpty(None, None)? };
     match x {
         ForkptyResult::Child => {
-            _ = Command::new(shell).env("TERM", "xterm").spawn()?.wait();
+            _ = Command::new(shell)
+                .env("TERM", "pattypan")
+                .spawn()?
+                .wait();
             exit(0);
         }
         ForkptyResult::Parent { child, master } => {
