@@ -150,15 +150,9 @@ impl Cells {
                 repeat_n(default(), (lines * c) as usize),
             )
             .for_each(drop);
-        self.cells
-            .drain(o + self.size.0 as usize * self.size.1 as usize..)
-            .for_each(drop);
-        // let at = self.offset() + self.margin.1 as usize;
-        // self.cells
-        //     .drain(
-        //         (o + self.size.0 as usize * self.size.1 as usize) - at..at,
-        //     )
-        //     .for_each(drop);
+        let n = (lines * c) as usize;
+        let x = o + self.c() as usize * self.margin.1 as usize;
+        self.cells.drain(x - n..x).for_each(drop);
     }
 }
 
