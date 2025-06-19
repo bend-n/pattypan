@@ -11,6 +11,7 @@ pub struct Terminal {
     pub cursor: (u16, u16),
     pub saved_cursor: (u16, u16),
 
+    pub view_o: u16,
     pub cells: Cells,
     pub p: TerminalInputParser,
     pub mode: Mode,
@@ -22,6 +23,7 @@ use std::default::Default::default;
 impl Terminal {
     pub fn new(sz: (u16, u16), alt: bool) -> Self {
         Self {
+            view_o: 0,
             style: default(),
             saved_cursor: (1, 1),
             cursor: (1, 1),
@@ -42,6 +44,16 @@ pub enum Mode {
 }
 
 impl Terminal {
+    pub fn scroll(&mut self, rows: f32) {
+        if rows < 0.0 {
+            let rows = rows.ceil().abs() as u16;
+            self.view_o = (self.view_o + rows).min(self.cells.row);
+        } else {
+            let rows = rows.floor() as u16;
+            self.view_o = self.view_o.saturating_sub(rows);
+        }
+    }
+
     fn decsc(&mut self) {
         self.saved_cursor = self.cursor;
     }
@@ -65,6 +77,9 @@ impl Terminal {
                     println!("newline");
                     self.cursor.1 -= 1;
                     self.cells.grow(1);
+                    if self.view_o + 1 == self.cells.row {
+                        self.view_o += 1;
+                    }
                 }
                 let w = self.cells.c();
                 let c = self.cells.get_at(self.cursor);

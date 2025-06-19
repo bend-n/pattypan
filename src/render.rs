@@ -17,7 +17,13 @@ pub fn render(
     let m = FONT.metrics(&[]);
     let sz = ppem * (m.max_width / m.units_per_em as f32);
     let mut i = Image::build(w as _, h as _).fill(colors::BACKGROUND);
-    for (col, k) in x.cells.rows().zip(1..) {
+    let c = x.cells.c();
+    let r = x.cells.r();
+    for (col, k) in x.cells.cells
+        [(x.view_o * c) as usize..(x.view_o * c + r * c) as usize]
+        .chunks_exact(c as _)
+        .zip(1..)
+    {
         for (&(mut cell), j) in col.iter().zip(0..) {
             if cell.style.flags & crate::term::INVERT != 0 {
                 std::mem::swap(&mut cell.style.bg, &mut cell.style.color);
@@ -108,15 +114,17 @@ pub fn render(
         }
     }
 
-    let cell = Image::<_, 4>::build(3, (ppem * 1.25).ceil() as u32)
-        .fill([0xFF, 0xCC, 0x66, 255]);
-    unsafe {
-        i.as_mut().overlay_at(
-            &cell,
-            4 + ((x.cursor.0 - 1) as f32 * sz) as u32,
-            (x.cursor.1 as f32 * (ppem * 1.25)) as u32 - 20,
-        )
-    };
+    if x.view_o == x.cells.row {
+        let cell = Image::<_, 4>::build(3, (ppem * 1.25).ceil() as u32)
+            .fill([0xFF, 0xCC, 0x66, 255]);
+        unsafe {
+            i.as_mut().overlay_at(
+                &cell,
+                4 + ((x.cursor.0 - 1) as f32 * sz) as u32,
+                (x.cursor.1 as f32 * (ppem * 1.25)) as u32 - 20,
+            )
+        };
+    }
     i
 }
 

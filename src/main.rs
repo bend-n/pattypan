@@ -163,6 +163,7 @@ fn main() -> Result<()> {
 
     let mut f = File::create("x").unwrap();
     loop {
+        t.scroll(w.get_scroll_wheel().unwrap_or_default().1);
         while let Ok(x) = trx.recv_timeout(Duration::from_millis(16)) {
             f.write_all(&x)?;
             for char in x {
