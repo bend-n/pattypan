@@ -19,8 +19,9 @@ pub fn render(
     let mut i = Image::build(w as _, h as _).fill(colors::BACKGROUND);
     let c = x.cells.c();
     let r = x.cells.r();
+    let vo = x.view_o.unwrap_or(x.cells.row);
     for (col, k) in x.cells.cells
-        [(x.view_o * c) as usize..(x.view_o * c + r * c) as usize]
+        [(vo * c) as usize..(vo * c + r * c) as usize]
         .chunks_exact(c as _)
         .zip(1..)
     {
@@ -114,7 +115,7 @@ pub fn render(
         }
     }
 
-    if x.view_o == x.cells.row {
+    if x.view_o == Some(x.cells.row) || x.view_o.is_none() {
         let cell = Image::<_, 4>::build(3, (ppem * 1.25).ceil() as u32)
             .fill([0xFF, 0xCC, 0x66, 255]);
         unsafe {

@@ -146,6 +146,7 @@ fn main() -> Result<()> {
     let rows = (w.get_size().1 as f32 / fh).floor() as u16 - 1;
     println!("{}x{}", rows, cols);
     let mut t = Terminal::new((cols, rows), false);
+    t.alternate.as_mut().unwrap().view_o = None;
     unsafe {
         let x = winsize {
             ws_row: rows,
