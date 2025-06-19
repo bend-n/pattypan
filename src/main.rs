@@ -5,6 +5,7 @@
     deadline_api,
     deref_patterns,
     generic_const_exprs,
+    guard_patterns,
     impl_trait_in_bindings,
     if_let_guard,
     import_trait_associated_functions
@@ -20,6 +21,7 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 pub mod colors;
+mod keyboard;
 
 use anyhow::Result;
 use fimg::Image;
@@ -102,77 +104,10 @@ fn main() -> Result<()> {
     let pty2 = pty.try_clone()?;
 
     std::thread::spawn(move || {
-        use Key::*;
-        let mut shifting = false;
-        let mut ctrl = false;
+        let mut b = keyboard::Board::new();
         while let Ok((k, s)) = krx.recv() {
-            if !s {
-                if k == LeftShift || k == RightShift {
-                    shifting = false;
-                }
-                if k == LeftCtrl || k == RightCtrl {
-                    ctrl = false;
-                }
-                continue;
-            }
-
-            let x = match k {
-                LeftSuper | RightSuper => continue,
-                LeftShift | RightShift => {
-                    shifting = true;
-                    continue;
-                }
-                LeftCtrl | RightCtrl => {
-                    ctrl = true;
-                    continue;
-                }
-                Enter => &b"\n"[..],
-                Delete => b"\x1b[3~",
-                Insert => b"\x1b[2~",
-                Escape => b"\x1b",
-                Up => b"\x1b[A",
-                Down => b"\x1b[B",
-                Right => b"\x1b[C",
-                Left => b"\x1b[D",
-                NumPad7 | Home => b"\x1b[H",
-                NumPad1 | End => b"\x1b[F",
-                Apostrophe if shifting => b"\"",
-                Apostrophe => b"'",
-                Space => b" ",
-                Period => b".",
-                Slash if shifting => b"?",
-                Slash => b"/",
-                Backslash if shifting => b"|",
-                Backslash => b"\\",
-                Backspace => b"",
-                Equal if shifting => b"+",
-                Equal => b"=",
-                Tab => b"\t",
-                Minus if shifting => b"_",
-                Minus => b"-",
-                LeftBracket if shifting => b"{",
-                LeftBracket => b"[",
-                RightBracket => b"]",
-                Semicolon if shifting => b":",
-                Semicolon => b";",
-                Comma => b",",
-                Backquote if shifting => b"~",
-                Backquote => b"`",
-
-                Key0 | Key1 | Key2 | Key3 | Key4 | Key5 | Key6 | Key7
-                | Key8 | Key9
-                    if shifting =>
-                {
-                    &[b")!@#$%^&*("[k as usize]]
-                }
-
-                Key0 | Key1 | Key2 | Key3 | Key4 | Key5 | Key6 | Key7
-                | Key8 | Key9 => &[k as u8 + b'0'],
-                _ if ctrl => &[k as u8 - 9],
-                _ if shifting => &[k as u8 - 10 + b'A'],
-                _ => &[k as u8 - 10 + b'a'],
-            };
-            write(pty1.as_fd(), x).unwrap();
+            let x = b.rx(k, s);
+            write(pty1.as_fd(), &x).unwrap();
         }
     });
 
