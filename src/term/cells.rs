@@ -3,7 +3,7 @@ pub struct Cells {
     pub size: (u16, u16),
     pub cells: Vec<Cell>,
     pub margin: (u16, u16),
-    pub row: u16,
+    pub row: usize,
 }
 #[derive(Clone, Copy, Debug)]
 pub struct Style {
@@ -113,7 +113,7 @@ impl Cells {
         &mut self.rows().nth(row as usize - 1).unwrap()[x as usize - 1..]
     }
     pub fn grow(&mut self, by: u16) {
-        self.row += by;
+        self.row += by as usize;
         let at = self.offset()
             + (self.margin.1 as usize - 1) * self.size.0 as usize;
         self.cells.splice(

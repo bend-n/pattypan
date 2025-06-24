@@ -11,7 +11,7 @@ pub struct Terminal {
     pub cursor: (u16, u16),
     pub saved_cursor: (u16, u16),
 
-    pub view_o: Option<u16>,
+    pub view_o: Option<usize>,
     pub cells: Cells,
     pub p: TerminalInputParser,
     pub mode: Mode,
@@ -49,10 +49,10 @@ impl Terminal {
             return;
         };
         if rows < 0.0 {
-            let rows = rows.ceil().abs() as u16;
+            let rows = rows.ceil().abs() as usize;
             *vo = (*vo + rows).min(self.cells.row);
         } else {
-            let rows = rows.floor() as u16;
+            let rows = rows.floor() as usize;
             *vo = vo.saturating_sub(rows);
         }
     }
@@ -81,7 +81,7 @@ impl Terminal {
                     self.cursor.1 -= 1;
                     self.cells.grow(1);
                     if let Some(vo) = self.view_o.as_mut()
-                        && *vo + 1 == self.cells.row
+                        && *vo + 1 == self.cells.row as usize
                     {
                         *vo += 1;
                     }

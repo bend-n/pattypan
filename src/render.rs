@@ -17,11 +17,10 @@ pub fn render(
     let m = FONT.metrics(&[]);
     let sz = ppem * (m.max_width / m.units_per_em as f32);
     let mut i = Image::build(w as _, h as _).fill(colors::BACKGROUND);
-    let c = x.cells.c();
-    let r = x.cells.r();
+    let c = x.cells.c() as usize;
+    let r = x.cells.r() as usize;
     let vo = x.view_o.unwrap_or(x.cells.row);
-    for (col, k) in x.cells.cells
-        [(vo * c) as usize..(vo * c + r * c) as usize]
+    for (col, k) in x.cells.cells[vo * c..vo * c + r * c]
         .chunks_exact(c as _)
         .zip(1..)
     {
