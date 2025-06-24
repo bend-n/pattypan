@@ -164,6 +164,34 @@ fn main() -> Result<()> {
 
     let mut f = File::create("x").unwrap();
     loop {
+        while w.get_size().0 < 20
+            || w.get_size().0 > 5000
+            || w.get_size().1 < 20
+            || w.get_size().1 > 5000
+        {
+            sleep(Duration::from_millis(10));
+            w.update();
+        }
+        let cols = (w.get_size().0 as f32 / fw).floor() as u16 - 1;
+        let rows = (w.get_size().1 as f32 / fh).floor() as u16 - 1;
+        // dbg!(cols, rows);
+        if (cols + 1, rows + 1) != t.cells.size {
+            println!("{}x{}", rows, cols);
+
+            unsafe {
+                let x = winsize {
+                    ws_row: rows,
+                    ws_col: cols,
+                    ws_xpixel: w.get_size().0 as _,
+                    ws_ypixel: w.get_size().1 as _,
+                };
+                assert!(
+                    ioctl(pty.as_raw_fd(), TIOCSWINSZ, &raw const x) == 0
+                );
+            };
+            t.resize((cols, rows));
+        }
+
         t.scroll(w.get_scroll_wheel().unwrap_or_default().1);
         while let Ok(x) = trx.recv_timeout(Duration::from_millis(16)) {
             f.write_all(&x)?;

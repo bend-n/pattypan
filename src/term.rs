@@ -60,6 +60,13 @@ impl Terminal {
     fn decsc(&mut self) {
         self.saved_cursor = self.cursor;
     }
+    pub fn resize(&mut self, (c, r): (u16, u16)) {
+        self.cells.resize((c, r));
+        self.alternate.as_mut().map(|x| x.resize((c, r)));
+        self.cursor = (self.cursor.0.min(c - 2), self.cursor.1.min(r - 2));
+        self.view_o.as_mut().map(|x| *x = self.cells.row);
+        println!("successful resize {c} {r} {:?}", self.cursor)
+    }
     fn decrc(&mut self) {
         self.cursor = self.saved_cursor;
     }

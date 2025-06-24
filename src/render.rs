@@ -17,6 +17,9 @@ pub fn render(
     let m = FONT.metrics(&[]);
     let sz = ppem * (m.max_width / m.units_per_em as f32);
     let mut i = Image::build(w as _, h as _).fill(colors::BACKGROUND);
+    if w < 60 || h < 60 {
+        return i;
+    }
     let c = x.cells.c() as usize;
     let r = x.cells.r() as usize;
     let vo = x.view_o.unwrap_or(x.cells.row);

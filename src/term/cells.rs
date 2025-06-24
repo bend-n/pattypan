@@ -11,6 +11,7 @@ pub struct Style {
     pub color: [u8; 3],
     pub flags: u8,
 }
+use std::cmp::Ordering;
 use std::default::Default::default;
 use std::fmt::Debug;
 use std::iter::{empty, repeat, repeat_n};
@@ -76,6 +77,7 @@ impl Cells {
     fn offset(&mut self) -> usize {
         self.row as usize * self.size.0 as usize
     }
+    #[track_caller]
     pub fn cells(&mut self) -> &mut [Cell] {
         let o = self.offset();
         assert!(
@@ -123,6 +125,61 @@ impl Cells {
                 by as usize * (self.size.0) as usize,
             ),
         );
+    }
+
+    pub fn resize(&mut self, (c, r): (u16, u16)) {
+        let (c, r) = (c + 1, r + 1);
+        assert!(self.cells.len() % self.c() as usize == 0);
+        let (oc, or) = self.size;
+        self.size = (c, r);
+        self.margin.0 = self.margin.0.min(r);
+        self.margin.1 = self.margin.1.min(r);
+
+        match c.cmp(&oc) {
+            Ordering::Less => {
+                self.cells = self
+                    .cells
+                    .chunks_exact(oc as usize)
+                    .flat_map(|chunk| &chunk[..c as usize])
+                    .copied()
+                    .collect::<Vec<_>>();
+                assert!(self.cells.len() % c as usize == 0);
+            }
+            Ordering::Equal => {}
+            Ordering::Greater => {
+                self.cells = self
+                    .cells
+                    .chunks_exact(oc as usize)
+                    .flat_map(|chunk| {
+                        chunk
+                            .iter()
+                            .copied()
+                            .chain(repeat_n(default(), (c - oc) as usize))
+                    })
+                    .collect::<Vec<_>>();
+                assert!(self.cells.len() % c as usize == 0);
+            }
+        };
+        assert!(self.cells.len() % c as usize == 0);
+        match r.cmp(&or) {
+            Ordering::Less => {
+                self.row += (or - r) as usize;
+            }
+            Ordering::Equal => {}
+            Ordering::Greater => {
+                let d = self.row as isize - (r - or) as isize;
+                if d < 0 {
+                    self.row = 0;
+                    self.cells.extend(repeat_n(
+                        Cell::default(),
+                        d.abs() as usize * c as usize,
+                    ));
+                } else {
+                    self.row = d as usize;
+                }
+            }
+        }
+        self.cells();
     }
     pub fn insert_chars(&mut self, characters: u16, (x, y): (u16, u16)) {
         let s = &mut self.row(y)[x as usize - 1..];
