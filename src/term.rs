@@ -172,7 +172,8 @@ impl Terminal {
                 end: b'D',
                 ..
             }) => {
-                self.cursor.0 -= p.value_or(1);
+                self.cursor.0 =
+                    (self.cursor.0.saturating_sub(p.value_or(1))).max(1);
             }
             Control(ControlFunction {
                 start: b'[',
