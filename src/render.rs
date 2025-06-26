@@ -12,6 +12,7 @@ use swash::zeno::Format;
 use swash::{FontRef, Instance};
 
 use crate::colors;
+use crate::term::{BOLD, ITALIC};
 
 #[implicit_fn::implicit_fn]
 pub fn render(
@@ -52,46 +53,62 @@ pub fn render(
             }
         }
     }
+    let mut characters: Vec<Glyph> = vec![Glyph::default(); c];
 
     for (col, k) in x.cells.cells[vo * c..vo * c + r * c]
         .chunks_exact(c as _)
         .zip(1..)
     {
-        let mut scx = ShapeContext::new();
-        let mut shaper = scx
-            .builder(*FONT)
-            .size(ppem)
-            .script(Script::Latin)
-            .features([
-                ("ss19", 1),
-                ("ss01", 1),
-                ("ss20", 1),
-                ("liga", 1),
-                ("rlig", 1),
-            ])
-            .build();
-
-        let mut cluster = CharCluster::new();
-        let mut parser = Parser::new(
-            Script::Latin,
-            col.iter().enumerate().map(|(i, cell)| {
-                let ch = cell.letter.unwrap_or(' ');
+        let tokenized = col.iter().enumerate().map(|(i, cell)| {
+            let ch = cell.letter.unwrap_or(' ');
+            (
                 Token {
                     ch,
                     offset: i as u32,
                     len: ch.len_utf8() as u8,
                     info: ch.properties().into(),
                     data: i as u32,
-                }
-            }),
-        );
+                },
+                cell.style.flags,
+            )
+        });
 
-        while parser.next(&mut cluster) {
-            cluster.map(|ch| FONT.charmap().map(ch));
-            shaper.add_cluster(&cluster);
+        macro_rules! input {
+            ($rule:expr, $font:ident) => {
+                let mut scx = ShapeContext::new();
+                let mut shaper = scx
+                    .builder(*$font)
+                    .size(ppem)
+                    .script(Script::Latin)
+                    .features([
+                        ("ss19", 1),
+                        ("ss01", 1),
+                        ("ss20", 1),
+                        ("liga", 1),
+                        ("rlig", 1),
+                    ])
+                    .build();
+
+                let mut cluster = CharCluster::new();
+
+                let mut parser = Parser::new(
+                    Script::Latin,
+                    tokenized.clone().filter($rule).map(|x| x.0),
+                );
+                while parser.next(&mut cluster) {
+                    cluster.map(|ch| $font.charmap().map(ch));
+                    shaper.add_cluster(&cluster);
+                }
+                shaper.shape_with(|x| {
+                    x.glyphs.into_iter().for_each(|x| {
+                        characters[x.data as usize] = *x;
+                    })
+                });
+            };
         }
-        let mut characters: Vec<Glyph> = vec![];
-        shaper.shape_with(|x| characters.extend(x.glyphs));
+        input!(|x| x.1 & ITALIC == 0, FONT);
+        input!(|x| x.1 & ITALIC != 0, IFONT); // bifont is an instance of ifont
+
         for (&(mut cell), glyph) in
             characters.iter().map(|x| (&col[x.data as usize], x))
         {
