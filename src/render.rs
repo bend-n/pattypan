@@ -3,6 +3,10 @@ use std::sync::LazyLock;
 use atools::Join;
 use fimg::BlendingOverlayAt;
 use swash::scale::{Render, ScaleContext, Source};
+use swash::shape::cluster::Glyph;
+use swash::shape::{ShapeContext, ShaperBuilder};
+use swash::text::cluster::{CharCluster, CharInfo, Parser, Token};
+use swash::text::{Codepoint, Language, Script};
 use swash::zeno::Format;
 use swash::{FontRef, Instance};
 
@@ -27,7 +31,45 @@ pub fn render(
         .chunks_exact(c as _)
         .zip(1..)
     {
-        for (&(mut cell), j) in col.iter().zip(0..) {
+        let mut scx = ShapeContext::new();
+        let mut shaper = scx
+            .builder(*FONT)
+            .size(ppem)
+            .script(Script::Latin)
+            .features([
+                ("ss19", 1),
+                ("ss01", 1),
+                ("ss20", 1),
+                ("liga", 1),
+                ("rlig", 1),
+            ])
+            .build();
+
+        let mut cluster = CharCluster::new();
+        let mut parser = Parser::new(
+            Script::Latin,
+            col.iter().enumerate().map(|(i, cell)| {
+                let ch = cell.letter.unwrap_or(' ');
+                Token {
+                    ch,
+                    offset: i as u32,
+                    len: ch.len_utf8() as u8,
+                    info: ch.properties().into(),
+                    data: i as u32,
+                }
+            }),
+        );
+
+        while parser.next(&mut cluster) {
+            cluster.map(|ch| FONT.charmap().map(ch));
+            shaper.add_cluster(&cluster);
+        }
+        let mut characters: Vec<Glyph> = vec![];
+        shaper.shape_with(|x| characters.extend(x.glyphs));
+        for (&(mut cell), glyph) in
+            characters.iter().map(|x| (&col[x.data as usize], x))
+        {
+            let j = glyph.data as usize;
             if cell.style.flags & crate::term::INVERT != 0 {
                 std::mem::swap(&mut cell.style.bg, &mut cell.style.color);
             }
@@ -69,13 +111,13 @@ pub fn render(
                     )
                 };
             }
-            if let Some(l) = cell.letter {
+            if let Some(_) = cell.letter {
                 let f = if (cell.style.flags & crate::term::ITALIC) != 0 {
                     *IFONT
                 } else {
                     *FONT
                 };
-                let id = f.charmap().map(l);
+                let id = glyph.id;
                 let mut scbd = ScaleContext::new();
                 let mut scbd = scbd.builder(f);
                 scbd = scbd.size(ppem);
@@ -107,8 +149,9 @@ pub fn render(
                     i.as_mut().blend_alpha_and_color_at(
                         &item.as_ref(),
                         color,
-                        4 + ((j as f32 * sz) + x.placement.left as f32)
-                            as u32,
+                        4 + ((j as f32 * sz + glyph.x)
+                            + x.placement.left as f32)
+                            .round() as u32,
                         ((k as f32 * (ppem * 1.25)) as u32)
                             .saturating_sub(x.placement.top as u32),
                     );
@@ -162,11 +205,11 @@ use fimg::{Image, OverlayAt};
 // println!("{}", x);
 #[test]
 fn t() {
-    IFONT
-        .instances()
-        .for_each(|f| drop(dbg!(f.name(None).unwrap().to_string())));
-    let f =
-        FontRef::from_index(&include_bytes!("../cjk.ttc")[..], 0).unwrap();
+    let f = *FONT;
+    f.features()
+        .for_each(|f| drop(dbg!(f.name().unwrap().to_string())));
+    // let f = FontRef::from_index(&include_bytes!("../fira.ttf")[..], 0)
+    //     .unwrap();
 
     dbg!(f.attributes());
     // let m = f.metrics(&[f.charmap().map('行') as _]);
@@ -174,14 +217,52 @@ fn t() {
     let ppem = 30.0;
     let d = dims(&FONT, ppem);
     let sz = d.0;
+    let mut scx = ShapeContext::new();
+    let mut shaper = scx
+        .builder(f)
+        .size(ppem)
+        .script(Script::Latin)
+        .features([
+            ("ss19", 1),
+            ("ss01", 1),
+            ("ss20", 1),
+            ("liga", 1),
+            ("rlig", 1),
+        ])
+        .build();
+
+    let mut cluster = CharCluster::new();
+    let mut parser = Parser::new(
+        Script::Latin,
+        ">>==> ==< :: :> := ::: !=  -->- <-|-> ###"
+            .char_indices()
+            .map(|(i, ch)| Token {
+                ch,
+                offset: i as u32,
+                len: ch.len_utf8() as u8,
+                info: ch.properties().into(),
+                data: 0,
+            }),
+    );
+
+    while parser.next(&mut cluster) {
+        cluster.map(|ch| f.charmap().map(ch));
+        shaper.add_cluster(&cluster);
+    }
+    let mut characters: Vec<Glyph> = vec![];
+    shaper.shape_with(|x| {
+        dbg!(x.is_ligature());
+        dbg!(x);
+        characters.extend(x.glyphs)
+    });
+    dbg!(f.charmap().map('!'));
     let mut grid = Image::<_, 4>::alloc(2000, 500);
     grid.chunked_mut().for_each(|x| *x = [0, 0, 0, 255]);
-    for (letter, i) in "素早い茶色のキツネは怠け者の犬を飛び越えた"
-        .chars()
-        .zip(0..)
-    {
+    for (letter, i) in characters.iter().zip(0..) {
         // grid.as_ref().show();
-        let id = f.charmap().map(letter);
+        // let id = f.charmap().map(letter);
+        // let id = 1940;
+        let id = letter.id;
         let x = Render::new(&[Source::Outline])
             .format(Format::Alpha)
             .render(
@@ -189,11 +270,14 @@ fn t() {
                 id,
             )
             .unwrap();
+        dbg!(x.placement.width);
+        dbg!(letter.x);
+
         unsafe {
             if x.placement.width == 0 {
                 continue;
             }
-            grid.as_mut().overlay_at(
+            grid.as_mut().overlay_blended_at(
                 &Image::<Box<[u8]>, 4>::from(
                     Image::<_, 1>::build(
                         x.placement.width,
@@ -202,7 +286,7 @@ fn t() {
                     .buf(&*x.data),
                 )
                 .as_ref(),
-                ((i as f32 * sz * 2.0) as i32 + x.placement.left) as _,
+                ((i as f32 * sz) as i32 + x.placement.left) as _,
                 ppem as u32 - x.placement.top as u32,
             );
         }

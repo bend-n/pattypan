@@ -1,4 +1,5 @@
 #![feature(
+    super_let,
     debug_closure_helpers,
     const_trait_impl,
     generic_assert,
