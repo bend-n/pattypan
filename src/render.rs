@@ -1,3 +1,4 @@
+use std::iter::zip;
 use std::sync::LazyLock;
 
 use atools::Join;
@@ -27,6 +28,31 @@ pub fn render(
     let c = x.cells.c() as usize;
     let r = x.cells.r() as usize;
     let vo = x.view_o.unwrap_or(x.cells.row);
+    for (col, k) in x.cells.cells[vo * c..vo * c + r * c]
+        .chunks_exact(c as _)
+        .zip(1..)
+    {
+        for (&(mut cell), j) in zip(col, 0..) {
+            if cell.style.flags & crate::term::INVERT != 0 {
+                std::mem::swap(&mut cell.style.bg, &mut cell.style.color);
+            }
+            if cell.style.bg != colors::BACKGROUND {
+                let cell = Image::<_, 4>::build(
+                    sz.ceil() as u32,
+                    (ppem * 1.25).ceil() as u32,
+                )
+                .fill(cell.style.bg.join(255));
+                unsafe {
+                    i.as_mut().overlay_at(
+                        &cell,
+                        4 + (j as f32 * sz) as u32,
+                        (k as f32 * (ppem * 1.25)) as u32 - 20,
+                    )
+                };
+            }
+        }
+    }
+
     for (col, k) in x.cells.cells[vo * c..vo * c + r * c]
         .chunks_exact(c as _)
         .zip(1..)
@@ -72,20 +98,6 @@ pub fn render(
             let j = glyph.data as usize;
             if cell.style.flags & crate::term::INVERT != 0 {
                 std::mem::swap(&mut cell.style.bg, &mut cell.style.color);
-            }
-            if cell.style.bg != colors::BACKGROUND {
-                let cell = Image::<_, 4>::build(
-                    sz.ceil() as u32,
-                    (ppem * 1.25).ceil() as u32,
-                )
-                .fill(cell.style.bg.join(255));
-                unsafe {
-                    i.as_mut().overlay_at(
-                        &cell,
-                        4 + (j as f32 * sz) as u32,
-                        (k as f32 * (ppem * 1.25)) as u32 - 20,
-                    )
-                };
             }
             let mut color = cell.style.color;
             if (cell.style.flags & crate::term::DIM) != 0 {
@@ -234,15 +246,13 @@ fn t() {
     let mut cluster = CharCluster::new();
     let mut parser = Parser::new(
         Script::Latin,
-        ">>==> ==< :: :> := ::: !=  -->- <-|-> ###"
-            .char_indices()
-            .map(|(i, ch)| Token {
-                ch,
-                offset: i as u32,
-                len: ch.len_utf8() as u8,
-                info: ch.properties().into(),
-                data: 0,
-            }),
+        "!=".char_indices().map(|(i, ch)| Token {
+            ch,
+            offset: i as u32,
+            len: ch.len_utf8() as u8,
+            info: ch.properties().into(),
+            data: 0,
+        }),
     );
 
     while parser.next(&mut cluster) {
@@ -283,10 +293,11 @@ fn t() {
                         x.placement.width,
                         x.placement.height,
                     )
-                    .buf(&*x.data),
+                    .buf(&*x.data)
+                    .show(),
                 )
                 .as_ref(),
-                ((i as f32 * sz) as i32 + x.placement.left) as _,
+                ((i as f32 * sz).round() as i32 + x.placement.left) as _,
                 ppem as u32 - x.placement.top as u32,
             );
         }
