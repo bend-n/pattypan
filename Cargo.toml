@@ -6,12 +6,14 @@ edition = "2024"
 [dependencies]
 anstream = "0.6.18"
 anyhow = "1.0.98"
+array_chunks = "1.0.0"
 atools = "0.1.6"
 chumsky = { git = "https://github.com/zesterer/chumsky", version = "0.11.0", features = [
     "nightly",
 ] }
 color-hex = "0.2.0"
 ctlfun = { git = "https://github.com/bend-n/ctlfun" }
+dsb = { git = "https://github.com/bend-n/dsb" }
 fimg = { git = "https://github.com/bend-n/fimg" }
 
 implicit-fn = "0.1.0"

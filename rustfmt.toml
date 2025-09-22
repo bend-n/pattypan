@@ -1,3 +1,7 @@
 max_width = 75
+format_strings = true
 group_imports = "StdExternalCrate"
 imports_granularity = "Module"
+match_arm_blocks = false
+style_edition = "2024"
+use_small_heuristics = "Max"

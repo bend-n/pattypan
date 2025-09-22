@@ -23,20 +23,12 @@ pub struct Board {
 }
 impl Board {
     pub fn new() -> Self {
-        Self {
-            mods: Modifiers {
-                alt: false,
-                shift: false,
-                ctrl: false,
-            },
-        }
+        Self { mods: Modifiers { alt: false, shift: false, ctrl: false } }
     }
 
     pub fn rx(&mut self, k: Key, s: bool) -> Vec<u8> {
         use Key::*;
-        let Self {
-            mods: Modifiers { shift, ctrl, alt },
-        } = self;
+        let Self { mods: Modifiers { shift, ctrl, alt } } = self;
         if !s {
             if k == LeftAlt || k == RightAlt {
                 *alt = false;

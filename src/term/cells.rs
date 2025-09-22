@@ -5,38 +5,14 @@ pub struct Cells {
     pub margin: (u16, u16),
     pub row: usize,
 }
-#[derive(Clone, Copy, Debug)]
-pub struct Style {
-    pub bg: [u8; 3],
-    pub color: [u8; 3],
-    pub flags: u8,
-}
 use std::cmp::Ordering;
 use std::default::Default::default;
 use std::fmt::Debug;
-use std::iter::{empty, repeat, repeat_n};
+use std::iter::repeat_n;
 
-use crate::colors;
-impl std::default::Default for Style {
-    fn default() -> Self {
-        Self {
-            bg: colors::BACKGROUND,
-            flags: 0,
-            color: colors::FOREGROUND,
-        }
-    }
-}
+use dsb::Cell;
+use dsb::cell::Style;
 
-#[derive(Clone, Copy, Default)]
-pub struct Cell {
-    pub style: Style,
-    pub letter: Option<char>,
-}
-impl Debug for Cell {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.letter.unwrap_or(' '))
-    }
-}
 impl Debug for Cells {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Cells")
@@ -55,24 +31,20 @@ impl Debug for Cells {
             .finish()
     }
 }
-impl Cell {
-    pub fn basic(c: char) -> Self {
-        Self {
-            letter: Some(c),
-            ..default()
-        }
-    }
-}
-
+pub const DSTYLE: Style = Style {
+    bg: crate::colors::BACKGROUND,
+    color: crate::colors::FOREGROUND,
+    flags: 0,
+};
+pub const DCELL: Cell = Cell { style: DSTYLE, letter: None };
 impl Cells {
-    pub fn new((c, r): (u16, u16)) -> Self {
+    pub fn new((c, r): (u16, u16), alternate: bool) -> Self {
         let (c, r) = (c + 1, r + 1);
-        Self {
-            size: (c, r),
-            margin: (1, r),
-            cells: vec![Cell::default(); (c as usize) * (r as usize)],
-            row: 0,
+        let mut cells = vec![DCELL; (c as usize) * (r as usize)];
+        if !alternate {
+            cells.reserve(1070000);
         }
+        Self { size: (c, r), margin: (1, r), cells, row: 0 }
     }
     fn offset(&mut self) -> usize {
         self.row as usize * self.size.0 as usize
@@ -86,10 +58,10 @@ impl Cells {
         );
         &mut self.cells[o..]
     }
-    pub fn r(&mut self) -> u16 {
+    pub fn r(&self) -> u16 {
         self.size.1
     }
-    pub fn c(&mut self) -> u16 {
+    pub fn c(&self) -> u16 {
         self.size.0
     }
     #[track_caller]
@@ -120,10 +92,7 @@ impl Cells {
             + (self.margin.1 as usize - 1) * self.size.0 as usize;
         self.cells.splice(
             at..at,
-            repeat_n(
-                Cell::default(),
-                by as usize * (self.size.0) as usize,
-            ),
+            repeat_n(DCELL, by as usize * (self.size.0) as usize),
         );
     }
 
@@ -154,7 +123,7 @@ impl Cells {
                         chunk
                             .iter()
                             .copied()
-                            .chain(repeat_n(default(), (c - oc) as usize))
+                            .chain(repeat_n(DCELL, (c - oc) as usize))
                     })
                     .collect::<Vec<_>>();
                 assert!(self.cells.len() % c as usize == 0);
@@ -171,7 +140,7 @@ impl Cells {
                 if d < 0 {
                     self.row = 0;
                     self.cells.extend(repeat_n(
-                        Cell::default(),
+                        DCELL,
                         d.abs() as usize * c as usize,
                     ));
                 } else {
@@ -184,18 +153,16 @@ impl Cells {
     pub fn insert_chars(&mut self, characters: u16, (x, y): (u16, u16)) {
         let s = &mut self.row(y)[x as usize - 1..];
         s.rotate_right(characters as usize);
-        s[..characters as usize].fill(Cell::default());
+        s[..characters as usize].fill(DCELL);
         let w = self.c();
-        self.row(y)[w as usize - characters as usize..]
-            .fill(Cell::default());
+        self.row(y)[w as usize - characters as usize..].fill(DCELL);
     }
     pub fn delete_chars(&mut self, characters: u16, (x, y): (u16, u16)) {
         let s = &mut self.row(y)[x as usize - 1..];
         s.rotate_left(characters as usize);
-        s[..characters as usize].fill(Cell::default());
+        s[..characters as usize].fill(DCELL);
         let w = self.c();
-        self.row(y)[w as usize - characters as usize..]
-            .fill(Cell::default());
+        self.row(y)[w as usize - characters as usize..].fill(DCELL);
     }
     pub fn insert_lines(&mut self, lines: u16, below: u16) {
         let c = self.c();
@@ -219,7 +186,7 @@ mod test {
 
     #[test]
     fn grow() {
-        let mut cells = Cells::new((4, 4));
+        let mut cells = Cells::new((4, 4), false);
         cells.row(1).fill(Cell::basic('1'));
         cells.row(2).fill(Cell::basic('2'));
         cells.row(3).fill(Cell::basic('3'));
@@ -232,7 +199,9 @@ mod test {
         dbg!(&cells);
         assert_eq!(
             format!("{cells:?}"),
-            "Cells { size: (5, 5), margin: (1, 5), row: 1, cells: [2, 2, 2, 2, 2]\n[3, 3, 3, 3, 3]\n[4, 4, 4, 4, 4]\n[5, 5, 5, 5, 5]\n[ ,  ,  ,  ,  ]\n }"
+            "Cells { size: (5, 5), margin: (1, 5), row: 1, cells: [2, 2, \
+             2, 2, 2]\n[3, 3, 3, 3, 3]\n[4, 4, 4, 4, 4]\n[5, 5, 5, 5, \
+             5]\n[ ,  ,  ,  ,  ]\n }"
         );
     }
 }

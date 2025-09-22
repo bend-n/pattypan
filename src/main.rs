@@ -14,10 +14,9 @@
 #![allow(incomplete_features)]
 use std::fs::File;
 use std::io::Write;
-use std::iter::successors;
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
 use std::process::{Command, exit};
-use std::sync::mpsc;
+use std::sync::{LazyLock, mpsc};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -25,14 +24,14 @@ pub mod colors;
 mod keyboard;
 
 use anyhow::Result;
+use dsb::F;
 use fimg::Image;
 use minifb::{InputCallback, Key, WindowOptions};
 use nix::pty::{ForkptyResult, forkpty};
 use nix::sys::wait::waitpid;
 use nix::unistd::Pid;
-use render::FONT;
+use swash::{FontRef, Instance};
 use term::*;
-mod render;
 mod term;
 use libc::{
     F_GETFL, F_SETFL, O_NONBLOCK, TIOCSWINSZ, fcntl, ioctl, winsize,
@@ -82,6 +81,7 @@ impl InputCallback for KeyPress {
     }
 }
 fn main() -> Result<()> {
+    let init = Instant::now();
     let mut w = minifb::Window::new(
         "pattypan",
         5,
@@ -117,11 +117,7 @@ fn main() -> Result<()> {
 
     std::thread::spawn(move || {
         loop {
-            let x = successors(read(pty2.as_fd()), |_| read(pty2.as_fd()))
-                .flatten()
-                .collect::<Vec<u8>>();
-            if !x.is_empty() {
-                // println!("recv");
+            if let Some(x) = read(pty2.as_fd()) {
                 ttx.send(x).unwrap();
             }
             sleep(Duration::from_millis(10));
@@ -138,20 +134,29 @@ fn main() -> Result<()> {
     });
 
     while w.get_size().0 < 20 || w.get_size().0 > 5000 {
-        sleep(Duration::from_millis(10));
+        sleep(Duration::from_millis(1));
         w.update();
     }
+    println!("{:?}", init.elapsed());
     let ppem = 20.0;
-    let (fw, fh) = render::dims(&FONT, ppem);
-    let cols = (w.get_size().0 as f32 / fw).floor() as u16 - 1;
-    let rows = (w.get_size().1 as f32 / fh).floor() as u16 - 1;
+    let mut fonts = dsb::Fonts::new(
+        F::FontRef(*FONT, &[(2003265652, 550.0)]),
+        F::instance(*FONT, *BFONT),
+        F::FontRef(*IFONT, &[(2003265652, 550.0)]),
+        F::instance(*IFONT, *BIFONT),
+    );
+
+    // let (fw, fh) = dsb::dims(&FONT, ppem);
+    let (cols, rows) = dsb::fit(&FONT, ppem, 20.0, w.get_size());
     println!("{}x{}", rows, cols);
-    let mut t = Terminal::new((cols, rows), false);
+    let mut t = Terminal::new((cols as _, rows as _), false);
     t.alternate.as_mut().unwrap().view_o = None;
+    let mut i = Image::build(w.get_size().0 as _, w.get_size().1 as _)
+        .fill(colors::BACKGROUND);
     unsafe {
         let x = winsize {
-            ws_row: rows,
-            ws_col: cols,
+            ws_row: rows as _,
+            ws_col: cols as _,
             ws_xpixel: w.get_size().0 as _,
             ws_ypixel: w.get_size().1 as _,
         };
@@ -160,8 +165,6 @@ fn main() -> Result<()> {
     let cj =
         swash::FontRef::from_index(&include_bytes!("../cjk.ttc")[..], 0)
             .unwrap();
-    let m = cj.metrics(&[]);
-    dbg!(m);
 
     let mut f = File::create("x").unwrap();
     loop {
@@ -173,9 +176,9 @@ fn main() -> Result<()> {
             sleep(Duration::from_millis(10));
             w.update();
         }
-        let cols = (w.get_size().0 as f32 / fw).floor() as u16 - 1;
-        let rows = (w.get_size().1 as f32 / fh).floor() as u16 - 1;
-        // dbg!(cols, rows);
+        let (cols, rows) =
+            dsb::fit(&FONT, ppem, 20.0, (w.get_size().0, w.get_size().1));
+        let [cols, rows] = [cols, rows].map(|x| x as u16 - 1);
         if (cols + 1, rows + 1) != t.cells.size {
             println!("{}x{}", rows, cols);
 
@@ -191,21 +194,64 @@ fn main() -> Result<()> {
                 );
             };
             t.resize((cols, rows));
+            i = Image::build(w.get_size().0 as u32, w.get_size().1 as u32)
+                .fill(colors::BACKGROUND);
         }
 
         t.scroll(w.get_scroll_wheel().unwrap_or_default().1);
-        while let Ok(x) = trx.recv_timeout(Duration::from_millis(16)) {
+        let now = Instant::now();
+        while let Ok(x) =
+            trx.recv_deadline(now + Duration::from_millis(16))
+        {
             f.write_all(&x)?;
             for char in x {
                 t.rx(char, pty.as_fd());
             }
         }
-        // dbg!(t.cells.get_at((1, 1)));
-        let i = render::render(&mut t, w.get_size(), ppem);
+        unsafe {
+            let z = (
+                cols as usize + 1,
+                (t.cells.cells().len() / cols as usize + 1)
+                    .min(t.cells.r() as _),
+            );
+            dsb::render(
+                &t.cells.cells[t.view_o.unwrap_or(t.cells.row)
+                    * t.cells.c() as usize..],
+                z,
+                ppem,
+                colors::BACKGROUND,
+                &mut fonts,
+                20.0,
+                true,
+                i.as_mut(),
+            )
+        };
+
         let x = Image::<Box<[u32]>, 1>::from(i.as_ref());
         w.update_with_buffer(x.buffer(), w.get_size().0, w.get_size().1)?;
     }
 }
+pub static FONT: LazyLock<FontRef<'static>> = LazyLock::new(|| {
+    FontRef::from_index(
+        &include_bytes!("/home/os/CascadiaCodeNF.ttf")[..],
+        0,
+    )
+    .unwrap()
+});
+pub static IFONT: LazyLock<FontRef<'static>> = LazyLock::new(|| {
+    FontRef::from_index(
+        &include_bytes!("/home/os/CascadiaCodeNFItalic.ttf")[..],
+        0,
+    )
+    .unwrap()
+});
+
+pub static BIFONT: LazyLock<Instance<'static>> = LazyLock::new(|| {
+    IFONT.instances().find_by_name("Bold Italic").unwrap()
+});
+
+pub static BFONT: LazyLock<Instance<'static>> =
+    LazyLock::new(|| FONT.instances().find_by_name("Bold").unwrap());
 #[test]
 
 fn tpaxrse() {

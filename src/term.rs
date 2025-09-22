@@ -5,6 +5,7 @@ use cells::*;
 use ctlfun::Parameter::*;
 use ctlfun::TerminalInput::*;
 use ctlfun::{ControlFunction, TerminalInputParser};
+use dsb::cell::Style;
 
 pub struct Terminal {
     pub style: Style,
@@ -24,10 +25,10 @@ impl Terminal {
     pub fn new(sz: (u16, u16), alt: bool) -> Self {
         Self {
             view_o: Some(0),
-            style: default(),
+            style: DSTYLE,
             saved_cursor: (1, 1),
             cursor: (1, 1),
-            cells: Cells::new(sz),
+            cells: Cells::new(sz, alt),
             p: default(),
             mode: Mode::Normal,
 
@@ -71,7 +72,7 @@ impl Terminal {
         self.cursor = self.saved_cursor;
     }
     fn clear(&mut self) {
-        self.cells.cells().fill(default());
+        self.cells.cells().fill(DCELL);
     }
     #[implicit_fn::implicit_fn]
     pub fn rx(&mut self, x: u8, pty: BorrowedFd<'_>) {
@@ -84,7 +85,7 @@ impl Terminal {
                     self.cursor.1 += 1;
                 }
                 while self.cursor.1 >= self.cells.r() {
-                    println!("newline");
+                    // println!("newline");
                     self.cursor.1 -= 1;
                     self.cells.grow(1);
                     if let Some(vo) = self.view_o.as_mut()
@@ -105,9 +106,7 @@ impl Terminal {
                 self.cursor.0 += 1;
             }
             Control(ControlFunction {
-                start: b'',
-                params: [],
-                ..
+                start: b'', params: [], ..
             }) => {
                 self.cursor.0 -= 1;
             }
@@ -117,7 +116,7 @@ impl Terminal {
                 end: b'm',
                 ..
             }) => {
-                self.style = Style::default();
+                self.style = DSTYLE;
             }
             Control(ControlFunction {
                 start: b'[',
@@ -135,7 +134,7 @@ impl Terminal {
                 {
                     use StyleAction::*;
                     match action {
-                        Reset => self.style = Style::default(),
+                        Reset => self.style = DSTYLE,
                         SetFg(c) => self.style.color = c,
                         SetBg(c) => self.style.bg = c,
                         ModeSet(1) => self.style.flags |= BOLD,
@@ -227,7 +226,7 @@ impl Terminal {
                     3 => 0..0,
                     _ => unreachable!(),
                 } {
-                    self.cells.row(row).fill(default());
+                    self.cells.row(row).fill(DCELL);
                 }
             }
             Control(ControlFunction {
@@ -236,7 +235,7 @@ impl Terminal {
                 end: b'K',
                 ..
             }) => {
-                self.cells.past(self.cursor).fill(default());
+                self.cells.past(self.cursor).fill(DCELL);
             }
             Control(ControlFunction {
                 start: b'[',
@@ -312,21 +311,17 @@ impl Terminal {
                 for cell in
                     self.cells.row(self.cursor.1).iter_mut().take(x as _)
                 {
-                    *cell = default();
+                    *cell = DCELL;
                 }
             }
 
             Control(ControlFunction {
-                start: b'\r',
-                params: [],
-                ..
+                start: b'\r', params: [], ..
             }) => {
                 self.cursor.0 = 1;
             }
             Control(ControlFunction {
-                start: b'\n',
-                params: [],
-                ..
+                start: b'\n', params: [], ..
             }) => {
                 self.cursor.1 += 1;
             }
@@ -338,10 +333,7 @@ impl Terminal {
                     ..
                 }
                 | ControlFunction {
-                    start: b'[',
-                    params: [],
-                    end: b's',
-                    ..
+                    start: b'[', params: [], end: b's', ..
                 },
             ) => {
                 self.decsc();
@@ -354,10 +346,7 @@ impl Terminal {
                     ..
                 }
                 | ControlFunction {
-                    start: b'[',
-                    params: [],
-                    end: b'u',
-                    ..
+                    start: b'[', params: [], end: b'u', ..
                 },
             ) => {
                 self.decrc();
@@ -399,7 +388,7 @@ impl Terminal {
                 end: b'B',
                 ..
             }) => {}
-            Control(x) => {
+            Control(x) =>
                 if x.start == b'[' {
                     println!(
                         "CSI {:?} {}",
@@ -430,8 +419,7 @@ impl Terminal {
                         String::from_utf8_lossy(&x.bytes),
                         x.end as char,
                     );
-                }
-            }
+                },
             _ => unreachable!(),
         }
     }
