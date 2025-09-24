@@ -166,7 +166,7 @@ fn main() -> Result<()> {
         swash::FontRef::from_index(&include_bytes!("../cjk.ttc")[..], 0)
             .unwrap();
 
-    let mut f = File::create("x").unwrap();
+    // let mut f = File::create("x").unwrap();
     loop {
         while w.get_size().0 < 20
             || w.get_size().0 > 5000
@@ -203,7 +203,7 @@ fn main() -> Result<()> {
         while let Ok(x) =
             trx.recv_deadline(now + Duration::from_millis(16))
         {
-            f.write_all(&x)?;
+            // f.write_all(&x)?;
             for char in x {
                 t.rx(char, pty.as_fd());
             }
