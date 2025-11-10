@@ -12,8 +12,6 @@
     import_trait_associated_functions
 )]
 #![allow(incomplete_features)]
-use std::fs::File;
-use std::io::Write;
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
 use std::process::{Command, exit};
 use std::sync::{LazyLock, mpsc};
@@ -162,9 +160,9 @@ fn main() -> Result<()> {
         };
         assert!(ioctl(pty.as_raw_fd(), TIOCSWINSZ, &raw const x) == 0);
     };
-    let cj =
-        swash::FontRef::from_index(&include_bytes!("../cjk.ttc")[..], 0)
-            .unwrap();
+    // let cj =
+    // swash::FontRef::from_index(&include_bytes!("../cjk.ttc")[..], 0)
+    // .unwrap();
 
     // let mut f = File::create("x").unwrap();
     loop {
@@ -219,11 +217,11 @@ fn main() -> Result<()> {
                     * t.cells.c() as usize..],
                 z,
                 ppem,
-                colors::BACKGROUND,
                 &mut fonts,
                 20.0,
                 true,
                 i.as_mut(),
+                (0, 0),
             )
         };
 
@@ -233,14 +231,15 @@ fn main() -> Result<()> {
 }
 pub static FONT: LazyLock<FontRef<'static>> = LazyLock::new(|| {
     FontRef::from_index(
-        &include_bytes!("/home/os/CascadiaCodeNF.ttf")[..],
+        std::fs::read("/home/os/CascadiaCodeNF.ttf").unwrap().leak(),
         0,
     )
     .unwrap()
 });
 pub static IFONT: LazyLock<FontRef<'static>> = LazyLock::new(|| {
     FontRef::from_index(
-        &include_bytes!("/home/os/CascadiaCodeNFItalic.ttf")[..],
+        std::fs::read("/home/os/CascadiaCodeNFItalic.ttf").unwrap().leak(),
+        // &include_bytes!("/home/os/CascadiaCodeNFItalic.ttf")[..],
         0,
     )
     .unwrap()
