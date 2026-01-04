@@ -8,7 +8,7 @@ anstream = "0.6.18"
 anyhow = "1.0.98"
 array_chunks = "1.0.0"
 atools = "0.1.6"
-chumsky = { git = "https://github.com/zesterer/chumsky", version = "0.12.0", features = [
+chumsky = { git = "https://github.com/zesterer/chumsky", version = "0.13.0", features = [
     "nightly",
 ] }
 color-hex = "0.2.0"
