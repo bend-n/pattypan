@@ -33,7 +33,8 @@ impl Debug for Cells {
 }
 pub const DSTYLE: Style = Style {
     bg: crate::colors::BACKGROUND,
-    color: crate::colors::FOREGROUND,
+    fg: crate::colors::FOREGROUND,
+    secondary_color: crate::colors::FOREGROUND,
     flags: 0,
 };
 pub const DCELL: Cell = Cell { style: DSTYLE, letter: None };

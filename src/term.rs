@@ -135,7 +135,7 @@ impl Terminal {
                     use StyleAction::*;
                     match action {
                         Reset => self.style = DSTYLE,
-                        SetFg(c) => self.style.color = c,
+                        SetFg(c) => self.style.fg = c,
                         SetBg(c) => self.style.bg = c,
                         ModeSet(1) => self.style.flags |= BOLD,
                         ModeSet(2) => self.style.flags |= DIM,
